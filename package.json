@@ -11,7 +11,12 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist/**/*.js", "dist/**/*.d.ts", "README.md", "LICENSE"],
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
@@ -22,11 +27,18 @@
     "format": "biome format --write .",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["mcp", "lsp", "language-server", "ide", "vscode", "jetbrains"],
+  "keywords": [
+    "mcp",
+    "lsp",
+    "language-server",
+    "ide",
+    "vscode",
+    "jetbrains"
+  ],
   "author": "EFLKumo",
   "license": "MIT",
   "dependencies": {
-    "zod": "^4.3.4"
+    "zod": "^4.3.6"
   },
   "repository": {
     "type": "git",
@@ -37,9 +49,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
-    "@types/node": "^22.19.3",
+    "@types/node": "^22.19.7",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18.0.0"
