@@ -8,7 +8,8 @@
       "Bash(pnpm run format:*)",
       "Bash(pnpm run lint:fix:*)",
       "Bash(pnpm run build)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "mcp__context7__query-docs"
     ]
   }
 }

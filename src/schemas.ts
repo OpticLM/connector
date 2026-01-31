@@ -3,27 +3,25 @@
  * @internal
  */
 
-import * as z from 'zod/mini'
+import { z } from 'zod'
 
-const uri = z.string().check(z.describe('The relative file path'))
-const symbol_name = z
-  .string()
-  .check(z.describe('The text of the symbol to find'))
+const uri = z.string().describe('The relative file path')
+
+const symbol_name = z.string().describe('The text of the symbol to find')
 
 const line_hint = z
   .number()
-  .check(
-    z.int(),
-    z.positive(),
-    z.describe('Approximate 1-based line number where the symbol is expected'),
-  )
+  .int()
+  .positive()
+  .describe('Approximate 1-based line number where the symbol is expected')
 
 const order_hint = z
-  ._default(z.optional(z.number().check(z.int(), z.minimum(0))), 0)
-  .check(
-    z.describe(
-      '0-based index of which occurrence to target if symbol appears multiple times',
-    ),
+  .number()
+  .int()
+  .min(0)
+  .default(0)
+  .describe(
+    '0-based index of which occurrence to target if symbol appears multiple times',
   )
 
 export const FuzzyPositionSchema = z.object({
@@ -37,36 +35,37 @@ export const ApplyEditSchema = z.object({
   uri,
   search_text: z
     .string()
-    .check(
-      z.describe('Exact text to replace (must exist uniquely in the file)'),
-    ),
-  replace_text: z.string().check(z.describe('New text to insert')),
-  description: z.string().check(z.describe('Rationale for the edit')),
+    .describe('Exact text to replace (must exist uniquely in the file)'),
+  replace_text: z.string().describe('New text to insert'),
+  description: z.string().describe('Rationale for the edit'),
 })
 
 export const CallHierarchySchema = z.object({
-  uri: z.string().check(z.describe('The file URI or path')),
+  uri: z.string().describe('The file URI or path'),
   symbol_name,
   line_hint,
   order_hint,
   direction: z
     .enum(['incoming', 'outgoing'])
-    .check(z.describe('Direction of the call hierarchy')),
+    .describe('Direction of the call hierarchy'),
 })
 
-const query = z.string().check(z.describe('The search query'))
+const query = z.string().describe('The search query')
 
 const case_sensitive = z
-  ._default(z.optional(z.boolean()), false)
-  .check(z.describe('Whether the search is case-sensitive'))
+  .boolean()
+  .default(false)
+  .describe('Whether the search is case-sensitive')
 
 const exact_match = z
-  ._default(z.optional(z.boolean()), false)
-  .check(z.describe('Whether to match exact words only'))
+  .boolean()
+  .default(false)
+  .describe('Whether to match exact words only')
 
 const regex_mode = z
-  ._default(z.optional(z.boolean()), false)
-  .check(z.describe('Whether the query is a regular expression'))
+  .boolean()
+  .default(false)
+  .describe('Whether the query is a regular expression')
 
 export const GlobalFindSchema = z.object({
   query,
@@ -80,15 +79,13 @@ export const GlobalReplaceSchema = z.object({
   case_sensitive,
   exact_match,
   regex_mode,
-  replace_with: z.string().check(z.describe('The replacement text')),
+  replace_with: z.string().describe('The replacement text'),
 })
 
 export const AddLinkSchema = z.object({
-  path: z.string().check(z.describe('The path to the document to modify')),
+  path: z.string().describe('The path to the document to modify'),
   pattern: z
     .string()
-    .check(z.describe('The text pattern to find and replace with a link')),
-  link_to: z
-    .string()
-    .check(z.describe('The target URI the link should point to')),
+    .describe('The text pattern to find and replace with a link'),
+  link_to: z.string().describe('The target URI the link should point to'),
 })
