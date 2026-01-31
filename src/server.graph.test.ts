@@ -108,7 +108,7 @@ describe('graph capability', () => {
 
   it('should register add_link tool and return success when link is added', async () => {
     const server = createMockServer()
-    const graphProvider = createMockGraphProvider([], true)
+    const graphProvider = createMockGraphProvider([])
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(),
       graph: graphProvider,
@@ -138,9 +138,12 @@ describe('graph capability', () => {
     )
   })
 
-  it('should return failure when add_link cannot find pattern', async () => {
+  it('should return error when add_link cannot find pattern', async () => {
     const server = createMockServer()
-    const graphProvider = createMockGraphProvider([], false)
+    const graphProvider = createMockGraphProvider(
+      [],
+      new Error('Pattern not found in document'),
+    )
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(),
       graph: graphProvider,
@@ -159,9 +162,10 @@ describe('graph capability', () => {
       },
     })
 
+    expect(r.isError).toBe(true)
     expect(r.structuredContent).toStrictEqual({
       success: false,
-      message: 'Failed to add link. Pattern may not exist in the document.',
+      message: 'Error: Pattern not found in document',
     })
   })
 
@@ -312,7 +316,7 @@ describe('graph capability', () => {
       }),
       resolveOutlinks: vi.fn(async () => []),
       resolveBacklinks: vi.fn(async () => []),
-      addLink: vi.fn(async () => true),
+      addLink: vi.fn(async () => {}),
     }
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(),
@@ -377,7 +381,7 @@ describe('graph capability', () => {
         throw new Error('Failed to resolve outlinks')
       }),
       resolveBacklinks: vi.fn(async () => []),
-      addLink: vi.fn(async () => true),
+      addLink: vi.fn(async () => {}),
     }
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(),
@@ -408,7 +412,7 @@ describe('graph capability', () => {
       resolveBacklinks: vi.fn(async () => {
         throw new Error('Failed to resolve backlinks')
       }),
-      addLink: vi.fn(async () => true),
+      addLink: vi.fn(async () => {}),
     }
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(),

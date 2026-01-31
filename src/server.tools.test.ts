@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { IdeCapabilities } from './capabilities.js'
-import { installMcpLspDriver } from './server.js'
 import {
-  createMockFileAccess,
-  createMockServer,
+  createAndConnectMockClient,
   createMockDefinitionProvider,
-  createMockReferencesProvider,
+  createMockFileAccess,
   createMockHierarchyProvider,
+  createMockReferencesProvider,
+  createMockServer,
   createMockUserInteraction,
   mockCodeSnippet,
-  createAndConnectMockClient,
 } from './server.fixtures.js'
+import { installMcpLspDriver } from './server.js'
 import type { CodeSnippet } from './types.js'
 
 describe('tool registration', () => {

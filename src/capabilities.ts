@@ -204,17 +204,14 @@ export interface GraphProvider {
 
   /**
    * Adds a link to a document by finding a pattern and replacing it with a link.
+   * Throws an error if the operation fails (e.g., pattern not found).
    *
    * @param path - The path to the document to modify
    * @param pattern - The text pattern to find and replace with a link
    * @param linkTo - The target URI the link should point to
-   * @returns Whether the link was successfully added
+   * @throws Error if the link cannot be added
    */
-  addLink(
-    path: UnifiedUri,
-    pattern: string,
-    linkTo: UnifiedUri,
-  ): Promise<boolean>
+  addLink(path: UnifiedUri, pattern: string, linkTo: UnifiedUri): Promise<void>
 }
 
 /**
@@ -244,17 +241,18 @@ export interface FrontmatterProvider {
 
   /**
    * Sets a frontmatter property on a document.
+   * Throws an error if the operation fails.
    *
    * @param path - The path to the document
    * @param property - The property name to set
    * @param value - The value to set
-   * @returns Whether the operation was successful
+   * @throws Error if the frontmatter cannot be updated
    */
   setFrontmatter(
     path: UnifiedUri,
     property: string,
     value: FrontmatterValue,
-  ): Promise<boolean>
+  ): Promise<void>
 }
 
 // ============================================================================

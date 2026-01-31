@@ -187,7 +187,7 @@ describe('frontmatter capability', () => {
         getFrontmatterStructure: vi.fn(async () => {
           throw new Error('Provider error')
         }),
-        setFrontmatter: vi.fn(async () => true),
+        setFrontmatter: vi.fn(async () => {}),
       }
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
@@ -213,7 +213,7 @@ describe('frontmatter capability', () => {
   describe('set_frontmatter tool', () => {
     it('should set a string value successfully', async () => {
       const server = createMockServer()
-      const frontmatterProvider = createMockFrontmatterProvider({}, [], true)
+      const frontmatterProvider = createMockFrontmatterProvider({}, [])
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
         frontmatter: frontmatterProvider,
@@ -245,7 +245,7 @@ describe('frontmatter capability', () => {
 
     it('should set an array value successfully', async () => {
       const server = createMockServer()
-      const frontmatterProvider = createMockFrontmatterProvider({}, [], true)
+      const frontmatterProvider = createMockFrontmatterProvider({}, [])
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
         frontmatter: frontmatterProvider,
@@ -277,7 +277,7 @@ describe('frontmatter capability', () => {
 
     it('should set a number value successfully', async () => {
       const server = createMockServer()
-      const frontmatterProvider = createMockFrontmatterProvider({}, [], true)
+      const frontmatterProvider = createMockFrontmatterProvider({}, [])
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
         frontmatter: frontmatterProvider,
@@ -309,7 +309,7 @@ describe('frontmatter capability', () => {
 
     it('should set a boolean value successfully', async () => {
       const server = createMockServer()
-      const frontmatterProvider = createMockFrontmatterProvider({}, [], true)
+      const frontmatterProvider = createMockFrontmatterProvider({}, [])
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
         frontmatter: frontmatterProvider,
@@ -341,7 +341,7 @@ describe('frontmatter capability', () => {
 
     it('should remove a property when value is null', async () => {
       const server = createMockServer()
-      const frontmatterProvider = createMockFrontmatterProvider({}, [], true)
+      const frontmatterProvider = createMockFrontmatterProvider({}, [])
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
         frontmatter: frontmatterProvider,
@@ -371,9 +371,13 @@ describe('frontmatter capability', () => {
       )
     })
 
-    it('should return failure when provider returns false', async () => {
+    it('should return error when provider throws', async () => {
       const server = createMockServer()
-      const frontmatterProvider = createMockFrontmatterProvider({}, [], false)
+      const frontmatterProvider = createMockFrontmatterProvider(
+        {},
+        [],
+        new Error('Failed to update frontmatter'),
+      )
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
         frontmatter: frontmatterProvider,
@@ -392,9 +396,10 @@ describe('frontmatter capability', () => {
         },
       })
 
+      expect(r.isError).toBe(true)
       expect(r.structuredContent).toStrictEqual({
         success: false,
-        message: 'Failed to update frontmatter.',
+        message: 'Error: Failed to update frontmatter',
       })
     })
 
@@ -522,7 +527,7 @@ describe('frontmatter capability', () => {
           throw new Error('File not found')
         }),
         getFrontmatterStructure: vi.fn(async () => []),
-        setFrontmatter: vi.fn(async () => true),
+        setFrontmatter: vi.fn(async () => {}),
       }
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
@@ -640,7 +645,7 @@ describe('frontmatter capability', () => {
           getLinkStructure: vi.fn(async () => []),
           resolveOutlinks: vi.fn(async () => []),
           resolveBacklinks: vi.fn(async () => []),
-          addLink: vi.fn(async () => true),
+          addLink: vi.fn(async () => {}),
         },
       }
 

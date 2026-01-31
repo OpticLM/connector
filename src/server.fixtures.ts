@@ -139,7 +139,7 @@ export function createMockGlobalFindProvider(
 
 export function createMockGraphProvider(
   links: Link[] = [],
-  addLinkResult = true,
+  addLinkError?: Error,
 ): GraphProvider {
   return {
     getLinkStructure: vi.fn(async (): Promise<Link[]> => links),
@@ -150,7 +150,11 @@ export function createMockGraphProvider(
         _path: string,
         _pattern: string,
         _linkTo: string,
-      ): Promise<boolean> => addLinkResult,
+      ): Promise<void> => {
+        if (addLinkError) {
+          throw addLinkError
+        }
+      },
     ),
   }
 }
@@ -158,7 +162,7 @@ export function createMockGraphProvider(
 export function createMockFrontmatterProvider(
   frontmatter: Frontmatter = {},
   structureMatches: FrontmatterMatch[] = [],
-  setResult = true,
+  setError?: Error,
 ): FrontmatterProvider {
   return {
     getFrontmatter: vi.fn(async (): Promise<Frontmatter> => frontmatter),
@@ -170,7 +174,11 @@ export function createMockFrontmatterProvider(
         _path: string,
         _property: string,
         _value: FrontmatterValue,
-      ): Promise<boolean> => setResult,
+      ): Promise<void> => {
+        if (setError) {
+          throw setError
+        }
+      },
     ),
   }
 }

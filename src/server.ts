@@ -1052,17 +1052,11 @@ function registerAddLinkTool(
       try {
         const path = normalizeUri(params.path)
         const linkTo = normalizeUri(params.link_to)
-        const success = await graphProvider.addLink(
-          path,
-          params.pattern,
-          linkTo,
-        )
+        await graphProvider.addLink(path, params.pattern, linkTo)
 
         return makeToolResult({
-          success,
-          message: success
-            ? 'Link added successfully.'
-            : 'Failed to add link. Pattern may not exist in the document.',
+          success: true,
+          message: 'Link added successfully.',
         })
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -1151,17 +1145,11 @@ function registerSetFrontmatterTool(
         const path = normalizeUri(params.path)
         // Convert null to undefined for the provider
         const value = params.value === null ? undefined : params.value
-        const success = await frontmatterProvider.setFrontmatter(
-          path,
-          params.property,
-          value,
-        )
+        await frontmatterProvider.setFrontmatter(path, params.property, value)
 
         return makeToolResult({
-          success,
-          message: success
-            ? 'Frontmatter updated successfully.'
-            : 'Failed to update frontmatter.',
+          success: true,
+          message: 'Frontmatter updated successfully.',
         })
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
