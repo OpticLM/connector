@@ -215,6 +215,31 @@ Provides graph/link functionality for document relationships (e.g., wiki-style l
 - `line`: 1-based line number where the link appears
 - `column`: 1-based column number where the link starts
 
+#### `FrontmatterProvider`
+
+```typescript
+interface FrontmatterProvider {
+  getFrontmatterStructure(property: string, path?: UnifiedUri): Promise<FrontmatterMatch[]>
+  getFrontmatter(path: UnifiedUri): Promise<Frontmatter>
+  setFrontmatter(path: UnifiedUri, property: string, value: FrontmatterValue): Promise<boolean>
+}
+```
+
+Provides frontmatter metadata functionality for documents (e.g., YAML frontmatter in Markdown files). Types:
+
+```typescript
+type FrontmatterValue = string | string[] | number | number[] | boolean | boolean[] | Date | undefined
+type Frontmatter = { [key: string]: FrontmatterValue }
+interface FrontmatterMatch {
+  path: UnifiedUri
+  value: FrontmatterValue
+}
+```
+
+- `getFrontmatterStructure`: Searches for a specific property across documents. If `path` is provided, searches only that document.
+- `getFrontmatter`: Gets all frontmatter for a specific document.
+- `setFrontmatter`: Sets a frontmatter property. Use `undefined` to remove the property.
+
 ### IdeCapabilities
 
 Combine all providers into a single configuration:
@@ -230,6 +255,7 @@ interface IdeCapabilities {
   outline?: OutlineProvider                 // Enables outline resource
   globalFind?: GlobalFindProvider           // Enables global_find and global_replace tools
   graph?: GraphProvider                     // Enables graph tools and resources
+  frontmatter?: FrontmatterProvider         // Enables frontmatter tools and resource
   onDiagnosticsChanged?: (callback: OnDiagnosticsChangedCallback) => void
 }
 ```
@@ -322,6 +348,29 @@ Add a link to a document by finding a text pattern and replacing it with a link.
 **Returns:**
 - Success status and message
 
+### `get_frontmatter_structure`
+
+Get frontmatter property values across documents.
+
+**Inputs:**
+- `property`: The frontmatter property name to search for (required)
+- `path`: Optional path to limit the search to a specific document
+
+**Returns:**
+- Array of matches with path and value
+
+### `set_frontmatter`
+
+Set a frontmatter property on a document.
+
+**Inputs:**
+- `path`: The path to the document to modify (required)
+- `property`: The frontmatter property name to set (required)
+- `value`: The value to set. Can be a string, number, boolean, array of these types, or null to remove the property.
+
+**Returns:**
+- Success status and message
+
 ## MCP Resources
 
 The SDK automatically registers resources based on which capabilities you provide:
@@ -408,6 +457,18 @@ Get incoming links (backlinks) to a specific file.
 **Example:** `backlinks://notes/topic-a.md`
 
 Returns a JSON array of links pointing to the specified document.
+
+No subscription support for this resource (read-only).
+
+### `frontmatter://{path}`
+
+Get frontmatter metadata for a specific file.
+
+**Resource URI Pattern:** `frontmatter://{+path}`
+
+**Example:** `frontmatter://notes/index.md`
+
+Returns a JSON object containing all frontmatter properties and values for the document.
 
 No subscription support for this resource (read-only).
 

@@ -5,6 +5,7 @@ import { vi } from 'vitest'
 import type {
   DefinitionProvider,
   DiagnosticsProvider,
+  FrontmatterProvider,
   GlobalFindMatch,
   GlobalFindOptions,
   GlobalFindProvider,
@@ -17,7 +18,15 @@ import type {
   FileAccessProvider,
   UserInteractionProvider,
 } from './interfaces.js'
-import type { CodeSnippet, Diagnostic, DocumentSymbol, Link } from './types.js'
+import type {
+  CodeSnippet,
+  Diagnostic,
+  DocumentSymbol,
+  Frontmatter,
+  FrontmatterMatch,
+  FrontmatterValue,
+  Link,
+} from './types.js'
 
 export const mockFiles = {
   'path/to/file': 'MockFileContent',
@@ -142,6 +151,26 @@ export function createMockGraphProvider(
         _pattern: string,
         _linkTo: string,
       ): Promise<boolean> => addLinkResult,
+    ),
+  }
+}
+
+export function createMockFrontmatterProvider(
+  frontmatter: Frontmatter = {},
+  structureMatches: FrontmatterMatch[] = [],
+  setResult = true,
+): FrontmatterProvider {
+  return {
+    getFrontmatter: vi.fn(async (): Promise<Frontmatter> => frontmatter),
+    getFrontmatterStructure: vi.fn(
+      async (): Promise<FrontmatterMatch[]> => structureMatches,
+    ),
+    setFrontmatter: vi.fn(
+      async (
+        _path: string,
+        _property: string,
+        _value: FrontmatterValue,
+      ): Promise<boolean> => setResult,
     ),
   }
 }

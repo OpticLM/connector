@@ -89,3 +89,31 @@ export const AddLinkSchema = z.object({
     .describe('The text pattern to find and replace with a link'),
   link_to: z.string().describe('The target URI the link should point to'),
 })
+
+export const GetFrontmatterStructureSchema = z.object({
+  property: z.string().describe('The frontmatter property name to search for'),
+  path: z
+    .string()
+    .optional()
+    .describe(
+      'Optional path to limit the search to a specific document. If not provided, searches all documents.',
+    ),
+})
+
+export const SetFrontmatterSchema = z.object({
+  path: z.string().describe('The path to the document to modify'),
+  property: z.string().describe('The frontmatter property name to set'),
+  value: z
+    .union([
+      z.string(),
+      z.array(z.string()),
+      z.number(),
+      z.array(z.number()),
+      z.boolean(),
+      z.array(z.boolean()),
+      z.null(),
+    ])
+    .describe(
+      'The value to set. Can be a string, number, boolean, array of these types, or null to remove.',
+    ),
+})

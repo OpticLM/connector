@@ -188,6 +188,38 @@ export interface DocumentSymbol {
 }
 
 // ============================================================================
+// Frontmatter Types
+// ============================================================================
+
+/**
+ * Allowed values for frontmatter properties.
+ */
+export type FrontmatterValue =
+  | string
+  | string[]
+  | number
+  | number[]
+  | boolean
+  | boolean[]
+  | Date
+  | undefined
+
+/**
+ * A frontmatter object mapping property names to values.
+ */
+export type Frontmatter = { [key: string]: FrontmatterValue }
+
+/**
+ * A frontmatter property match from a structure query.
+ */
+export interface FrontmatterMatch {
+  /** The path to the document containing the frontmatter */
+  path: UnifiedUri
+  /** The value of the frontmatter property */
+  value: FrontmatterValue
+}
+
+// ============================================================================
 // Graph/Link Types
 // ============================================================================
 

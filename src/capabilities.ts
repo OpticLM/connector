@@ -17,6 +17,9 @@ import type {
   Diagnostic,
   DocumentSymbol,
   ExactPosition,
+  Frontmatter,
+  FrontmatterMatch,
+  FrontmatterValue,
   Link,
   UnifiedUri,
 } from './types.js'
@@ -214,6 +217,46 @@ export interface GraphProvider {
   ): Promise<boolean>
 }
 
+/**
+ * Provides frontmatter functionality for document metadata.
+ */
+export interface FrontmatterProvider {
+  /**
+   * Gets the frontmatter structure for a specific property across documents.
+   * If path is provided, searches only that document. Otherwise, searches all documents.
+   *
+   * @param property - The frontmatter property name to search for
+   * @param path - Optional path to limit the search to a specific document
+   * @returns Array of matches containing path and value
+   */
+  getFrontmatterStructure(
+    property: string,
+    path?: UnifiedUri,
+  ): Promise<FrontmatterMatch[]>
+
+  /**
+   * Gets all frontmatter for a specific document.
+   *
+   * @param path - The path to the document
+   * @returns The frontmatter object for the document
+   */
+  getFrontmatter(path: UnifiedUri): Promise<Frontmatter>
+
+  /**
+   * Sets a frontmatter property on a document.
+   *
+   * @param path - The path to the document
+   * @param property - The property name to set
+   * @param value - The value to set
+   * @returns Whether the operation was successful
+   */
+  setFrontmatter(
+    path: UnifiedUri,
+    property: string,
+    value: FrontmatterValue,
+  ): Promise<boolean>
+}
+
 // ============================================================================
 // Composite IDE Capabilities
 // ============================================================================
@@ -255,6 +298,9 @@ export interface IdeCapabilities {
 
   /** Optional: Provides graph/link functionality for document relationships */
   graph?: GraphProvider
+
+  /** Optional: Provides frontmatter functionality for document metadata */
+  frontmatter?: FrontmatterProvider
 
   /**
    * Optional: Called by the driver to register a callback for diagnostics changes.

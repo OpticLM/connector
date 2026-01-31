@@ -67,8 +67,10 @@ import {
   ApplyEditSchema,
   CallHierarchySchema,
   FuzzyPositionSchema,
+  GetFrontmatterStructureSchema,
   GlobalFindSchema,
   GlobalReplaceSchema,
+  SetFrontmatterSchema,
 } from './schemas.js'
 import type {
   EditResult,
@@ -160,6 +162,11 @@ function registerTools(
     registerGetLinkStructureTool(server, capabilities)
     registerAddLinkTool(server, capabilities)
   }
+
+  if (capabilities.frontmatter) {
+    registerGetFrontmatterStructureTool(server, capabilities)
+    registerSetFrontmatterTool(server, capabilities)
+  }
 }
 
 function registerResources(
@@ -178,6 +185,10 @@ function registerResources(
 
   if (capabilities.graph) {
     registerGraphResources(server, capabilities)
+  }
+
+  if (capabilities.frontmatter) {
+    registerFrontmatterResource(server, capabilities)
   }
 }
 
@@ -1062,6 +1073,160 @@ function registerAddLinkTool(
             message,
           },
           isError: true,
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers the get_frontmatter_structure tool.
+ */
+function registerGetFrontmatterStructureTool(
+  server: McpServer,
+  capabilities: IdeCapabilities,
+): void {
+  const frontmatterProvider = capabilities.frontmatter
+  if (!frontmatterProvider) return
+
+  server.registerTool(
+    'get_frontmatter_structure',
+    {
+      description:
+        'Get frontmatter property values across documents. If path is provided, searches only that document. Otherwise, searches all documents.',
+      inputSchema: GetFrontmatterStructureSchema,
+      outputSchema: {
+        matches: z.array(
+          z.object({
+            path: z.string(),
+            value: z.unknown(),
+          }),
+        ),
+      },
+    },
+    async (params) => {
+      try {
+        const path = params.path ? normalizeUri(params.path) : undefined
+        const matches = await frontmatterProvider.getFrontmatterStructure(
+          params.property,
+          path,
+        )
+
+        return makeToolResult({ matches })
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          content: [{ type: 'text' as const, text: message }],
+          structuredContent: { error: message },
+          isError: true,
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers the set_frontmatter tool.
+ */
+function registerSetFrontmatterTool(
+  server: McpServer,
+  capabilities: IdeCapabilities,
+): void {
+  const frontmatterProvider = capabilities.frontmatter
+  if (!frontmatterProvider) return
+
+  server.registerTool(
+    'set_frontmatter',
+    {
+      description:
+        'Set a frontmatter property on a document. Use null to remove the property.',
+      inputSchema: SetFrontmatterSchema,
+      outputSchema: {
+        success: z.boolean(),
+        message: z.string().optional(),
+      },
+    },
+    async (params) => {
+      try {
+        const path = normalizeUri(params.path)
+        // Convert null to undefined for the provider
+        const value = params.value === null ? undefined : params.value
+        const success = await frontmatterProvider.setFrontmatter(
+          path,
+          params.property,
+          value,
+        )
+
+        return makeToolResult({
+          success,
+          message: success
+            ? 'Frontmatter updated successfully.'
+            : 'Failed to update frontmatter.',
+        })
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          content: [{ type: 'text' as const, text: message }],
+          structuredContent: {
+            success: false,
+            message,
+          },
+          isError: true,
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers the frontmatter resource.
+ * - frontmatter://{path} - frontmatter for a specific file
+ */
+function registerFrontmatterResource(
+  server: McpServer,
+  capabilities: IdeCapabilities,
+): void {
+  const frontmatterProvider = capabilities.frontmatter
+  if (!frontmatterProvider) return
+
+  const frontmatterTemplate = new ResourceTemplate('frontmatter://{+path}', {
+    list: undefined, // Cannot enumerate all files
+  })
+
+  server.registerResource(
+    'frontmatter',
+    frontmatterTemplate,
+    {
+      description:
+        'Frontmatter metadata for a specific file. Use the file path after frontmatter://',
+      mimeType: 'application/json',
+    },
+    async (_uri, variables) => {
+      try {
+        const path = variables.path as string
+        const normalizedPath = normalizeUri(path)
+        const frontmatter =
+          await frontmatterProvider.getFrontmatter(normalizedPath)
+
+        return {
+          contents: [
+            {
+              uri: `frontmatter://${path}`,
+              mimeType: 'application/json',
+              text: JSON.stringify(frontmatter, null, 2),
+            },
+          ],
+        }
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          contents: [
+            {
+              uri: `frontmatter://${variables.path}`,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: message }),
+            },
+          ],
         }
       }
     },

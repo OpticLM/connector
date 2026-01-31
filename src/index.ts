@@ -11,6 +11,7 @@
 export type {
   DefinitionProvider,
   DiagnosticsProvider,
+  FrontmatterProvider,
   GlobalFindMatch,
   GlobalFindOptions,
   GlobalFindProvider,
@@ -45,6 +46,9 @@ export type {
   EditFailureReason,
   EditResult,
   ExactPosition,
+  Frontmatter,
+  FrontmatterMatch,
+  FrontmatterValue,
   FuzzyPosition,
   Link,
   PendingEditOperation,
