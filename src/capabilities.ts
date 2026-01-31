@@ -17,6 +17,7 @@ import type {
   Diagnostic,
   DocumentSymbol,
   ExactPosition,
+  Link,
   UnifiedUri,
 } from './types.js'
 
@@ -171,6 +172,48 @@ export interface GlobalFindProvider {
   ): Promise<number>
 }
 
+/**
+ * Provides graph/link functionality for document relationships.
+ */
+export interface GraphProvider {
+  /**
+   * Gets all links in the workspace.
+   *
+   * @returns Array of all links in the workspace
+   */
+  getLinkStructure(): Promise<Link[]>
+
+  /**
+   * Resolves outgoing links from a specific document.
+   *
+   * @param path - The path to the document
+   * @returns Array of outgoing links from the document
+   */
+  resolveOutlinks(path: UnifiedUri): Promise<Link[]>
+
+  /**
+   * Resolves incoming links (backlinks) to a specific document.
+   *
+   * @param path - The path to the document
+   * @returns Array of links pointing to this document
+   */
+  resolveBacklinks(path: UnifiedUri): Promise<Link[]>
+
+  /**
+   * Adds a link to a document by finding a pattern and replacing it with a link.
+   *
+   * @param path - The path to the document to modify
+   * @param pattern - The text pattern to find and replace with a link
+   * @param linkTo - The target URI the link should point to
+   * @returns Whether the link was successfully added
+   */
+  addLink(
+    path: UnifiedUri,
+    pattern: string,
+    linkTo: UnifiedUri,
+  ): Promise<boolean>
+}
+
 // ============================================================================
 // Composite IDE Capabilities
 // ============================================================================
@@ -209,6 +252,9 @@ export interface IdeCapabilities {
 
   /** Optional: Provides global find and replace functionality */
   globalFind?: GlobalFindProvider
+
+  /** Optional: Provides graph/link functionality for document relationships */
+  graph?: GraphProvider
 
   /**
    * Optional: Called by the driver to register a callback for diagnostics changes.

@@ -186,3 +186,27 @@ export interface DocumentSymbol {
   /** Children of this symbol (e.g., methods in a class) */
   children?: DocumentSymbol[]
 }
+
+// ============================================================================
+// Graph/Link Types
+// ============================================================================
+
+/**
+ * Represents a link between documents (e.g., wiki-style links, imports, references).
+ */
+export interface Link {
+  /** The source URI where this link originates from */
+  sourceUri: UnifiedUri
+  /** The target URI this link points to */
+  targetUri: UnifiedUri
+  /** Optional subpath within the target (e.g., heading anchor like #section) */
+  subpath?: string
+  /** The display text of the link (if different from target) */
+  displayText?: string
+  /** Whether the link target has been resolved to an existing document */
+  resolved: boolean
+  /** 1-based line number where the link appears */
+  line: number
+  /** 1-based column where the link starts */
+  column: number
+}

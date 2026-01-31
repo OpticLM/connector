@@ -11,12 +11,7 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist/**/*.js",
-    "dist/**/*.d.ts",
-    "README.md",
-    "LICENSE"
-  ],
+  "files": ["dist/**/*.js", "dist/**/*.d.ts", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
@@ -27,14 +22,7 @@
     "format": "biome format --write .",
     "prepublishOnly": "npm run build"
   },
-  "keywords": [
-    "mcp",
-    "lsp",
-    "language-server",
-    "ide",
-    "vscode",
-    "jetbrains"
-  ],
+  "keywords": ["mcp", "lsp", "language-server", "ide", "vscode", "jetbrains"],
   "author": "EFLKumo",
   "license": "MIT",
   "dependencies": {

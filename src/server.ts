@@ -63,6 +63,7 @@ import {
   SymbolResolver,
 } from './resolver.js'
 import {
+  AddLinkSchema,
   ApplyEditSchema,
   CallHierarchySchema,
   FuzzyPositionSchema,
@@ -154,6 +155,11 @@ function registerTools(
     registerGlobalFindTool(server, capabilities)
     registerGlobalReplaceTool(server, capabilities)
   }
+
+  if (capabilities.graph) {
+    registerGetLinkStructureTool(server, capabilities)
+    registerAddLinkTool(server, capabilities)
+  }
 }
 
 function registerResources(
@@ -168,6 +174,10 @@ function registerResources(
 
   if (capabilities.outline) {
     registerOutlineResource(server, capabilities)
+  }
+
+  if (capabilities.graph) {
+    registerGraphResources(server, capabilities)
   }
 }
 
@@ -852,6 +862,203 @@ function registerGlobalReplaceTool(
           structuredContent: {
             success: false,
             replacementCount: 0,
+            message,
+          },
+          isError: true,
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers graph-related resources.
+ * - outlinks://{path} - outgoing links from a specific file
+ * - backlinks://{path} - incoming links (backlinks) to a specific file
+ */
+function registerGraphResources(
+  server: McpServer,
+  capabilities: IdeCapabilities,
+): void {
+  const graphProvider = capabilities.graph
+  if (!graphProvider) return
+
+  // Register outlinks resource template
+  const outlinksTemplate = new ResourceTemplate('outlinks://{+path}', {
+    list: undefined, // Cannot enumerate all files
+  })
+
+  server.registerResource(
+    'outlinks',
+    outlinksTemplate,
+    {
+      description:
+        'Outgoing links from a specific file. Use the file path after outlinks://',
+      mimeType: 'application/json',
+    },
+    async (_uri, variables) => {
+      try {
+        const path = variables.path as string
+        const normalizedPath = normalizeUri(path)
+        const links = await graphProvider.resolveOutlinks(normalizedPath)
+
+        return {
+          contents: [
+            {
+              uri: `outlinks://${path}`,
+              mimeType: 'application/json',
+              text: JSON.stringify(links, null, 2),
+            },
+          ],
+        }
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          contents: [
+            {
+              uri: `outlinks://${variables.path}`,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: message }),
+            },
+          ],
+        }
+      }
+    },
+  )
+
+  // Register backlinks resource template
+  const backlinksTemplate = new ResourceTemplate('backlinks://{+path}', {
+    list: undefined, // Cannot enumerate all files
+  })
+
+  server.registerResource(
+    'backlinks',
+    backlinksTemplate,
+    {
+      description:
+        'Incoming links (backlinks) to a specific file. Use the file path after backlinks://',
+      mimeType: 'application/json',
+    },
+    async (_uri, variables) => {
+      try {
+        const path = variables.path as string
+        const normalizedPath = normalizeUri(path)
+        const links = await graphProvider.resolveBacklinks(normalizedPath)
+
+        return {
+          contents: [
+            {
+              uri: `backlinks://${path}`,
+              mimeType: 'application/json',
+              text: JSON.stringify(links, null, 2),
+            },
+          ],
+        }
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          contents: [
+            {
+              uri: `backlinks://${variables.path}`,
+              mimeType: 'application/json',
+              text: JSON.stringify({ error: message }),
+            },
+          ],
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers the get_link_structure tool.
+ */
+function registerGetLinkStructureTool(
+  server: McpServer,
+  capabilities: IdeCapabilities,
+): void {
+  const graphProvider = capabilities.graph
+  if (!graphProvider) return
+
+  server.registerTool(
+    'get_link_structure',
+    {
+      description:
+        'Get all links in the workspace, showing relationships between documents.',
+      inputSchema: {},
+      outputSchema: {
+        links: z.array(
+          z.object({
+            sourceUri: z.string(),
+            targetUri: z.string(),
+            subpath: z.string().optional(),
+            displayText: z.string().optional(),
+            resolved: z.boolean(),
+            line: z.number(),
+            column: z.number(),
+          }),
+        ),
+      },
+    },
+    async () => {
+      try {
+        const links = await graphProvider.getLinkStructure()
+        return makeToolResult({ links })
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          content: [{ type: 'text' as const, text: message }],
+          structuredContent: { error: message },
+          isError: true,
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers the add_link tool.
+ */
+function registerAddLinkTool(
+  server: McpServer,
+  capabilities: IdeCapabilities,
+): void {
+  const graphProvider = capabilities.graph
+  if (!graphProvider) return
+
+  server.registerTool(
+    'add_link',
+    {
+      description:
+        'Add a link to a document by finding a text pattern and replacing it with a link to the target.',
+      inputSchema: AddLinkSchema,
+      outputSchema: {
+        success: z.boolean(),
+        message: z.string().optional(),
+      },
+    },
+    async (params) => {
+      try {
+        const path = normalizeUri(params.path)
+        const linkTo = normalizeUri(params.link_to)
+        const success = await graphProvider.addLink(
+          path,
+          params.pattern,
+          linkTo,
+        )
+
+        return makeToolResult({
+          success,
+          message: success
+            ? 'Link added successfully.'
+            : 'Failed to add link. Pattern may not exist in the document.',
+        })
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          content: [{ type: 'text' as const, text: message }],
+          structuredContent: {
+            success: false,
             message,
           },
           isError: true,

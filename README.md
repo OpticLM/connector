@@ -195,6 +195,26 @@ Provides global find and replace functionality across the workspace. `GlobalFind
 - `matchText`: The matching text
 - `context`: Context around the match (e.g., the full line)
 
+#### `GraphProvider`
+
+```typescript
+interface GraphProvider {
+  getLinkStructure(): Promise<Link[]>
+  resolveOutlinks(path: UnifiedUri): Promise<Link[]>
+  resolveBacklinks(path: UnifiedUri): Promise<Link[]>
+  addLink(path: UnifiedUri, pattern: string, linkTo: UnifiedUri): Promise<boolean>
+}
+```
+
+Provides graph/link functionality for document relationships (e.g., wiki-style links, cross-references). `Link` includes:
+- `sourceUri`: The source URI where the link originates
+- `targetUri`: The target URI the link points to
+- `subpath`: Optional subpath within the target (e.g., `#section` for Obsidian-style anchors)
+- `displayText`: Optional display text of the link
+- `resolved`: Whether the link target exists
+- `line`: 1-based line number where the link appears
+- `column`: 1-based column number where the link starts
+
 ### IdeCapabilities
 
 Combine all providers into a single configuration:
@@ -209,6 +229,7 @@ interface IdeCapabilities {
   diagnostics?: DiagnosticsProvider         // Enables diagnostics resources
   outline?: OutlineProvider                 // Enables outline resource
   globalFind?: GlobalFindProvider           // Enables global_find and global_replace tools
+  graph?: GraphProvider                     // Enables graph tools and resources
   onDiagnosticsChanged?: (callback: OnDiagnosticsChangedCallback) => void
 }
 ```
@@ -280,6 +301,27 @@ Replace all occurrences of text across the entire workspace.
 - Number of replacements made
 - Success status and message
 
+### `get_link_structure`
+
+Get all links in the workspace, showing relationships between documents.
+
+**Inputs:** None
+
+**Returns:**
+- Array of links with source URI, target URI, subpath, display text, resolved status, line, and column
+
+### `add_link`
+
+Add a link to a document by finding a text pattern and replacing it with a link.
+
+**Inputs:**
+- `path`: The path to the document to modify
+- `pattern`: The text pattern to find and replace with a link
+- `link_to`: The target URI the link should point to
+
+**Returns:**
+- Success status and message
+
 ## MCP Resources
 
 The SDK automatically registers resources based on which capabilities you provide:
@@ -342,6 +384,30 @@ For directories: returns directory children (git-ignored files excluded, similar
 **Resource URI Pattern:** `lsp://files/{+path}`
 
 **Example:** `lsp://files/src`, `lsp://files/src/index.ts`, `lsp://files/src/index.ts#L1-L2`
+
+No subscription support for this resource (read-only).
+
+### `outlinks://{path}`
+
+Get outgoing links from a specific file.
+
+**Resource URI Pattern:** `outlinks://{+path}`
+
+**Example:** `outlinks://notes/index.md`
+
+Returns a JSON array of links originating from the specified document.
+
+No subscription support for this resource (read-only).
+
+### `backlinks://{path}`
+
+Get incoming links (backlinks) to a specific file.
+
+**Resource URI Pattern:** `backlinks://{+path}`
+
+**Example:** `backlinks://notes/topic-a.md`
+
+Returns a JSON array of links pointing to the specified document.
 
 No subscription support for this resource (read-only).
 
@@ -428,6 +494,16 @@ interface Diagnostic {
   message: string
   source?: string
   code?: string | number
+}
+
+interface Link {
+  sourceUri: UnifiedUri
+  targetUri: UnifiedUri
+  subpath?: string
+  displayText?: string
+  resolved: boolean
+  line: number
+  column: number
 }
 
 type EditResult =

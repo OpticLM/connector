@@ -82,3 +82,13 @@ export const GlobalReplaceSchema = z.object({
   regex_mode,
   replace_with: z.string().check(z.describe('The replacement text')),
 })
+
+export const AddLinkSchema = z.object({
+  path: z.string().check(z.describe('The path to the document to modify')),
+  pattern: z
+    .string()
+    .check(z.describe('The text pattern to find and replace with a link')),
+  link_to: z
+    .string()
+    .check(z.describe('The target URI the link should point to')),
+})
