@@ -58,7 +58,7 @@ describe('tool registration', () => {
     const server = createMockServer()
     const referenceSnippets: CodeSnippet[] = [
       {
-        uri: 'file:///path/to/file1',
+        uri: 'path/to/file1',
         range: {
           start: { line: 10, character: 5 },
           end: { line: 10, character: 10 },
@@ -66,7 +66,7 @@ describe('tool registration', () => {
         content: 'someVariable',
       },
       {
-        uri: 'file:///path/to/file2',
+        uri: 'path/to/file2',
         range: {
           start: { line: 20, character: 0 },
           end: { line: 20, character: 12 },
@@ -77,7 +77,7 @@ describe('tool registration', () => {
     const referencesProvider = createMockReferencesProvider(referenceSnippets)
     // File content with someVariable at line 10
     const files = {
-      'file:///path/to/file':
+      'path/to/file':
         'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nsomeVariable\nline11',
     }
     const capabilities: IdeCapabilities = {
@@ -92,7 +92,7 @@ describe('tool registration', () => {
     const r = await client.callTool({
       name: 'find_references',
       arguments: {
-        uri: 'file:///path/to/file',
+        uri: 'path/to/file',
         symbol_name: 'someVariable',
         line_hint: 10,
       },
@@ -103,13 +103,13 @@ describe('tool registration', () => {
           content: 'someVariable',
           endLine: 11,
           startLine: 11,
-          uri: 'file:///path/to/file1',
+          uri: 'path/to/file1',
         },
         {
           content: 'someVariable = 42',
           endLine: 21,
           startLine: 21,
-          uri: 'file:///path/to/file2',
+          uri: 'path/to/file2',
         },
       ],
     })
@@ -131,7 +131,7 @@ describe('tool registration', () => {
     const server = createMockServer()
     const callHierarchySnippets: CodeSnippet[] = [
       {
-        uri: 'file:///path/to/caller1',
+        uri: 'path/to/caller1',
         range: {
           start: { line: 5, character: 0 },
           end: { line: 7, character: 1 },
@@ -139,7 +139,7 @@ describe('tool registration', () => {
         content: 'function caller1() {\n  targetFunction()\n}',
       },
       {
-        uri: 'file:///path/to/caller2',
+        uri: 'path/to/caller2',
         range: {
           start: { line: 15, character: 0 },
           end: { line: 18, character: 1 },
@@ -150,7 +150,7 @@ describe('tool registration', () => {
     const hierarchyProvider = createMockHierarchyProvider(callHierarchySnippets)
     // File content with targetFunction at line 10
     const files = {
-      'file:///path/to/file':
+      'path/to/file':
         'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\ntargetFunction\nline11',
     }
     const capabilities: IdeCapabilities = {
@@ -165,7 +165,7 @@ describe('tool registration', () => {
     const r = await client.callTool({
       name: 'call_hierarchy',
       arguments: {
-        uri: 'file:///path/to/file',
+        uri: 'path/to/file',
         symbol_name: 'targetFunction',
         line_hint: 10,
         direction: 'incoming',
@@ -177,13 +177,13 @@ describe('tool registration', () => {
           content: 'function caller1() {\n  targetFunction()\n}',
           endLine: 8,
           startLine: 6,
-          uri: 'file:///path/to/caller1',
+          uri: 'path/to/caller1',
         },
         {
           content: 'function caller2() {\n  x = targetFunction()\n}',
           endLine: 19,
           startLine: 16,
-          uri: 'file:///path/to/caller2',
+          uri: 'path/to/caller2',
         },
       ],
     })
@@ -204,7 +204,7 @@ describe('tool registration', () => {
   it('should register apply_edit and return result when user approves', async () => {
     const server = createMockServer()
     const userInteraction = createMockUserInteraction(true)
-    const files = { 'file:///test.ts': 'const foo = 1; const bar = 2;' }
+    const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(files),
       userInteraction,
@@ -217,7 +217,7 @@ describe('tool registration', () => {
     const r = await client.callTool({
       name: 'apply_edit',
       arguments: {
-        uri: 'file:///test.ts',
+        uri: 'test.ts',
         search_text: 'const foo = 1;',
         replace_text: 'const foo = 100;',
         description: 'Update foo value',
@@ -232,7 +232,7 @@ describe('tool registration', () => {
   it('should register apply_edit and return rejection when user declines', async () => {
     const server = createMockServer()
     const userInteraction = createMockUserInteraction(false)
-    const files = { 'file:///test.ts': 'const foo = 1; const bar = 2;' }
+    const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(files),
       userInteraction,
@@ -245,7 +245,7 @@ describe('tool registration', () => {
     const r = await client.callTool({
       name: 'apply_edit',
       arguments: {
-        uri: 'file:///test.ts',
+        uri: 'test.ts',
         search_text: 'const foo = 1;',
         replace_text: 'const foo = 100;',
         description: 'Update foo value',

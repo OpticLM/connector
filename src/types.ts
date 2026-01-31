@@ -11,7 +11,7 @@
 
 /**
  * A Unified Resource Identifier.
- * Must be a file system path or a standard file:// scheme.
+ * Must be a file system path.
  */
 export type UnifiedUri = string
 

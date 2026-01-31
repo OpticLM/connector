@@ -386,8 +386,8 @@ function registerCallHierarchyTool(
 
 /**
  * Registers diagnostics resources.
- * - lsp://diagnostics/{path} - diagnostics for a specific file
- * - lsp://diagnostics/workspace - diagnostics for the entire workspace (if getWorkspaceDiagnostics is provided)
+ * - diagnostics://{path} - diagnostics for a specific file
+ * - diagnostics://workspace - diagnostics for the entire workspace (if getWorkspaceDiagnostics is provided)
  */
 function registerDiagnosticsResources(
   server: McpServer,
@@ -398,7 +398,7 @@ function registerDiagnosticsResources(
 
   // Register file diagnostics resource template
   const fileDiagnosticsTemplate = new ResourceTemplate(
-    'lsp://diagnostics/{+path}',
+    'diagnostics://{+path}',
     {
       list: undefined, // Cannot enumerate all files with diagnostics
     },
@@ -409,7 +409,7 @@ function registerDiagnosticsResources(
     fileDiagnosticsTemplate,
     {
       description:
-        'Diagnostics (errors, warnings, hints) for a specific file. Use the file path after lsp://diagnostics/',
+        'Diagnostics (errors, warnings, hints) for a specific file. Use the file path after diagnostics://',
       mimeType: 'text/markdown',
     },
     async (_uri, variables) => {
@@ -423,7 +423,7 @@ function registerDiagnosticsResources(
         return {
           contents: [
             {
-              uri: `lsp://diagnostics/${path}`,
+              uri: `diagnostics://${path}`,
               mimeType: 'text/markdown',
               text: markdown,
             },
@@ -434,7 +434,7 @@ function registerDiagnosticsResources(
         return {
           contents: [
             {
-              uri: `lsp://diagnostics/${variables.path}`,
+              uri: `diagnostics://${variables.path}`,
               mimeType: 'text/markdown',
               text: message,
             },
@@ -451,7 +451,7 @@ function registerDiagnosticsResources(
 
     server.registerResource(
       'workspace-diagnostics',
-      'lsp://diagnostics/workspace',
+      'diagnostics://workspace',
       {
         description:
           'All diagnostics (errors, warnings, hints) across the entire workspace',
@@ -473,7 +473,7 @@ function registerDiagnosticsResources(
             return {
               contents: [
                 {
-                  uri: 'lsp://diagnostics/workspace',
+                  uri: 'diagnostics://workspace',
                   mimeType: 'text/markdown',
                   text: 'No diagnostics found in workspace.',
                 },
@@ -492,7 +492,7 @@ function registerDiagnosticsResources(
           return {
             contents: [
               {
-                uri: 'lsp://diagnostics/workspace',
+                uri: 'diagnostics://workspace',
                 mimeType: 'text/markdown',
                 text: sections.join('\n\n'),
               },
@@ -503,7 +503,7 @@ function registerDiagnosticsResources(
           return {
             contents: [
               {
-                uri: 'lsp://diagnostics/workspace',
+                uri: 'diagnostics://workspace',
                 mimeType: 'text/markdown',
                 text: message,
               },
@@ -520,12 +520,12 @@ function registerDiagnosticsResources(
       // Notify MCP clients that the diagnostics resource has been updated
       const normalizedUri = normalizeUri(uri)
       server.server.sendResourceUpdated({
-        uri: `lsp://diagnostics/${normalizedUri}`,
+        uri: `diagnostics://${normalizedUri}`,
       })
       // Also notify workspace diagnostics if it exists
       if (diagnosticsProvider.getWorkspaceDiagnostics) {
         server.server.sendResourceUpdated({
-          uri: 'lsp://diagnostics/workspace',
+          uri: 'diagnostics://workspace',
         })
       }
     })
@@ -534,7 +534,7 @@ function registerDiagnosticsResources(
 
 /**
  * Registers the outline resource.
- * - lsp://outline/{path} - document symbols (outline) for a specific file
+ * - outline://{path} - document symbols (outline) for a specific file
  */
 function registerOutlineResource(
   server: McpServer,
@@ -543,7 +543,7 @@ function registerOutlineResource(
   const outlineProvider = capabilities.outline
   if (!outlineProvider) return
 
-  const outlineTemplate = new ResourceTemplate('lsp://outline/{+path}', {
+  const outlineTemplate = new ResourceTemplate('outline://{+path}', {
     list: undefined, // Cannot enumerate all files
   })
 
@@ -552,7 +552,7 @@ function registerOutlineResource(
     outlineTemplate,
     {
       description:
-        'Document outline (symbols like classes, functions, variables) for a specific file. Use the file path after lsp://outline/',
+        'Document outline (symbols like classes, functions, variables) for a specific file. Use the file path after outline://',
       mimeType: 'text/markdown',
     },
     async (_uri, variables) => {
@@ -566,7 +566,7 @@ function registerOutlineResource(
         return {
           contents: [
             {
-              uri: `lsp://outline/${path}`,
+              uri: `outline://${path}`,
               mimeType: 'text/markdown',
               text: markdown,
             },
@@ -577,7 +577,7 @@ function registerOutlineResource(
         return {
           contents: [
             {
-              uri: `lsp://outline/${variables.path}`,
+              uri: `outline://${variables.path}`,
               mimeType: 'text/markdown',
               text: message,
             },
@@ -663,10 +663,10 @@ function registerApplyEditTool(
 
 /**
  * Registers the filesystem resource.
- * - lsp://files/path - file tree for a directory (git-ignored files excluded)
- * - lsp://files/path/to/file.ext - read file content
- * - lsp://files/path/to/file.ext#L21 - read specific line
- * - lsp://files/path/to/file.ext#L21-L28 - read line range
+ * - files://path - file tree for a directory (git-ignored files excluded)
+ * - files://path/to/file.ext - read file content
+ * - files://path/to/file.ext#L21 - read specific line
+ * - files://path/to/file.ext#L21-L28 - read line range
  */
 function registerFilesystemResource(
   server: McpServer,
@@ -675,7 +675,7 @@ function registerFilesystemResource(
   const { readFile, readDirectory, getFileTree } = capabilities.fileAccess
 
   if (getFileTree !== undefined) {
-    const fileTreeTemplate = new ResourceTemplate('lsp://filetree/{+path}', {
+    const fileTreeTemplate = new ResourceTemplate('filetree://{+path}', {
       list: undefined,
     })
 
@@ -700,7 +700,7 @@ function registerFilesystemResource(
     )
   }
 
-  const filesystemTemplate = new ResourceTemplate('lsp://files/{+path}', {
+  const filesystemTemplate = new ResourceTemplate('files://{+path}', {
     list: undefined, // Cannot enumerate all directories
   })
 

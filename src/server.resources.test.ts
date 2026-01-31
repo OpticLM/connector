@@ -36,12 +36,12 @@ describe('resource integration', () => {
     expect(success).toBeTruthy()
 
     const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'lsp://diagnostics/test.ts' })
+    const r = await client.readResource({ uri: 'diagnostics://test.ts' })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/markdown',
       text: '- **ERROR** [typescript] (2322) at line 1: Syntax error',
-      uri: 'lsp://diagnostics/test.ts',
+      uri: 'diagnostics://test.ts',
     })
   })
 
@@ -80,7 +80,7 @@ describe('resource integration', () => {
     expect(success).toBeTruthy()
 
     const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'lsp://diagnostics/workspace' })
+    const r = await client.readResource({ uri: 'diagnostics://workspace' })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/markdown',
@@ -89,7 +89,7 @@ describe('resource integration', () => {
 
 ## file2.ts
 - **ERROR** at line 6: Missing semicolon`,
-      uri: 'lsp://diagnostics/workspace',
+      uri: 'diagnostics://workspace',
     })
   })
 
@@ -133,13 +133,13 @@ describe('resource integration', () => {
     expect(success).toBeTruthy()
 
     const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'lsp://outline/test.ts' })
+    const r = await client.readResource({ uri: 'outline://test.ts' })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/markdown',
       text: `- **class** \`MyClass\` (lines 1-11)
   - **method** \`myMethod\` (lines 3-6)`,
-      uri: 'lsp://outline/test.ts',
+      uri: 'outline://test.ts',
     })
   })
 
@@ -197,14 +197,14 @@ describe('resource integration', () => {
     expect(success).toBeTruthy()
 
     const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'lsp://outline/test.ts' })
+    const r = await client.readResource({ uri: 'outline://test.ts' })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/markdown',
       text: `- **namespace** \`MyNamespace\` (lines 1-21)
   - **class** \`MyClass\` (lines 3-16)
     - **method** \`constructor\` (lines 5-7)`,
-      uri: 'lsp://outline/test.ts',
+      uri: 'outline://test.ts',
     })
   })
 
@@ -218,12 +218,12 @@ describe('resource integration', () => {
     expect(success).toBeTruthy()
 
     const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'lsp://files/src' })
+    const r = await client.readResource({ uri: 'files://src' })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'application/json',
       text: '["file1.ts","file2.ts","subdir"]',
-      uri: 'lsp://files/src',
+      uri: 'files://src',
     })
   })
 
@@ -241,13 +241,13 @@ describe('resource integration', () => {
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
-      uri: 'lsp://files/src/test.ts',
+      uri: 'files://src/test.ts',
     })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
       text: fileContent,
-      uri: 'lsp://files/src/test.ts',
+      uri: 'files://src/test.ts',
     })
   })
 
@@ -265,13 +265,13 @@ describe('resource integration', () => {
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
-      uri: 'lsp://files/src/test.ts#L3',
+      uri: 'files://src/test.ts#L3',
     })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
       text: 'line3',
-      uri: 'lsp://files/src/test.ts#L3',
+      uri: 'files://src/test.ts#L3',
     })
   })
 
@@ -289,13 +289,13 @@ describe('resource integration', () => {
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
-      uri: 'lsp://files/src/test.ts#L2-L4',
+      uri: 'files://src/test.ts#L2-L4',
     })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
       text: 'line2\nline3\nline4',
-      uri: 'lsp://files/src/test.ts#L2-L4',
+      uri: 'files://src/test.ts#L2-L4',
     })
   })
 
@@ -309,12 +309,12 @@ describe('resource integration', () => {
     expect(success).toBeTruthy()
 
     const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'lsp://filetree/src' })
+    const r = await client.readResource({ uri: 'filetree://src' })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'application/json',
       text: '["src/index.ts","src/utils.ts","README.md"]',
-      uri: 'lsp://filetree/src',
+      uri: 'filetree://src',
     })
   })
 
@@ -329,17 +329,17 @@ describe('resource integration', () => {
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
-      uri: 'lsp://filetree/src/components',
+      uri: 'filetree://src/components',
     })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'application/json',
       text: '["src/index.ts","src/utils.ts","README.md"]',
-      uri: 'lsp://filetree/src/components',
+      uri: 'filetree://src/components',
     })
   })
 
-  it('should fallback to readDirectory when file read fails on lsp://files', async () => {
+  it('should fallback to readDirectory when file read fails on files://', async () => {
     const server = createMockServer()
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess({}), // No files, readFile will fail
@@ -349,12 +349,12 @@ describe('resource integration', () => {
     expect(success).toBeTruthy()
 
     const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'lsp://files/src' })
+    const r = await client.readResource({ uri: 'files://src' })
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'application/json',
       text: '["file1.ts","file2.ts","subdir"]',
-      uri: 'lsp://files/src',
+      uri: 'files://src',
     })
   })
 })

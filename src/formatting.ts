@@ -23,11 +23,6 @@ export function normalizeUri(uri: string): string {
     throw new Error('URI could not include ".." operator')
   }
 
-  // If it's already a file:// URI, leave it alone
-  if (uri.startsWith('file://')) {
-    return uri
-  }
-
   // Normalize backslashes to forward slashes for consistency
   return uri.replace(/\\/g, '/')
 }

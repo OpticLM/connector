@@ -6,8 +6,7 @@ A TypeScript SDK that bridges Language Server Protocol (LSP) capabilities with t
 
 - **Fuzzy-to-Exact Resolution**: LLMs interact via semantic anchors (`symbolName`, `lineHint`), and the SDK resolves them to precise coordinates
 - **Disk-Based Truth**: All read operations reflect the state of files on disk, ignoring unsaved IDE buffers
-- **Human-in-the-Loop Edits**: Write operations require explicit user approval before applying changes
-- **Type Safety**: Strict TypeScript with no `any` types
+- **High Abstraction**: Beyond LSP, it also provides functionality related to something like dual chains (graph capability) and metadata (frontmatter capability).
 
 ## Installation
 
@@ -375,23 +374,23 @@ Set a frontmatter property on a document.
 
 The SDK automatically registers resources based on which capabilities you provide:
 
-### `lsp://diagnostics/{path}`
+### `diagnostics://{path}`
 
 Get diagnostics (errors, warnings) for a specific file.
 
-**Resource URI Pattern:** `lsp://diagnostics/{+path}`
+**Resource URI Pattern:** `diagnostics://{+path}`
 
-**Example:** `lsp://diagnostics/src/main.ts`
+**Example:** `diagnostics://src/main.ts`
 
 Returns diagnostics formatted as markdown with location, severity, and message information.
 
 **Subscription Support:** If your IDE implements `onDiagnosticsChanged` capability, these resources become subscribable. When diagnostics change, the driver sends resource update notifications.
 
-### `lsp://diagnostics/workspace`
+### `diagnostics://workspace`
 
 Get diagnostics across the entire workspace.
 
-**Resource URI:** `lsp://diagnostics/workspace`
+**Resource URI:** `diagnostics://workspace`
 
 Only available if your `DiagnosticsProvider` implements the optional `getWorkspaceDiagnostics()` method.
 
@@ -399,13 +398,13 @@ Returns workspace diagnostics grouped by file, formatted as markdown.
 
 **Subscription Support:** If your IDE implements `onDiagnosticsChanged` capability, this resource becomes subscribable.
 
-### `lsp://outline/{path}`
+### `outline://{path}`
 
 Get the document outline (symbol tree) for a file.
 
-**Resource URI Pattern:** `lsp://outline/{+path}`
+**Resource URI Pattern:** `outline://{+path}`
 
-**Example:** `lsp://outline/src/components/Button.tsx`
+**Example:** `outline://src/components/Button.tsx`
 
 Returns document symbols formatted as a hierarchical markdown outline, including:
 - Symbol names and kinds (class, function, method, etc.)
@@ -414,25 +413,25 @@ Returns document symbols formatted as a hierarchical markdown outline, including
 
 No subscription support for this resource (read-only).
 
-### `lsp://filetree/{path}`
+### `filetree://{path}`
 
 Get the complete file tree for a directory, excluding git-ignored files.
 
-**Resource URI Pattern:** `lsp://filetree/{+path}`
+**Resource URI Pattern:** `filetree://{+path}`
 
-**Example:** `lsp://filetree/src`, `lsp://filetree/.`
+**Example:** `filetree://src`, `filetree://.`
 
 Returns a JSON array of all file paths in the directory tree (recursive). Use "." for the root directory.
 
 No subscription support for this resource (read-only).
 
-### `lsp://files/{path}`
+### `files://{path}`
 
 For directories: returns directory children (git-ignored files excluded, similar to `ls`). For files: gets file content with optional line range.
 
-**Resource URI Pattern:** `lsp://files/{+path}`
+**Resource URI Pattern:** `files://{+path}`
 
-**Example:** `lsp://files/src`, `lsp://files/src/index.ts`, `lsp://files/src/index.ts#L1-L2`
+**Example:** `files://src`, `files://src/index.ts`, `files://src/index.ts#L1-L2`
 
 No subscription support for this resource (read-only).
 
