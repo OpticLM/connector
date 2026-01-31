@@ -1,6 +1,6 @@
 {
   "name": "mcp-lsp-driver",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP LSP Driver for IDE plugins to easily expose LSP features via an MCP server.",
   "type": "module",
   "main": "dist/index.js",
