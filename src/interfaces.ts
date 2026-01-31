@@ -44,14 +44,23 @@ export interface FileAccessProvider {
 }
 
 // ============================================================================
-// User Interaction (Required for Edits)
+// Edit Provider (Required for Edits)
 // ============================================================================
 
 /**
- * Provides user interaction capabilities for edit operations.
- * The SDK uses this to present diffs and get user approval before applying changes.
+ * Provides edit capabilities for applying changes to files.
+ * At least one of the methods must be implemented.
  */
-export interface UserInteractionProvider {
+export interface EditProvider {
+  /**
+   * Applies edits directly without user interaction.
+   * Use this when user approval is handled elsewhere or not needed.
+   *
+   * @param operation - The pending edit operation to apply
+   * @returns true if applied successfully, false if failed
+   */
+  applyEdits?(operation: PendingEditOperation): Promise<boolean>
+
   /**
    * Displays a diff view or a confirmation dialog in the IDE.
    * The user decides whether to apply the edits or discard them.
@@ -59,5 +68,5 @@ export interface UserInteractionProvider {
    * @param operation - The pending edit operation to preview
    * @returns true if applied, false if rejected/cancelled
    */
-  previewAndApplyEdits(operation: PendingEditOperation): Promise<boolean>
+  previewAndApplyEdits?(operation: PendingEditOperation): Promise<boolean>
 }

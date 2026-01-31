@@ -25,8 +25,8 @@ export type {
 
 // Infrastructure Interfaces
 export type {
+  EditProvider,
   FileAccessProvider,
-  UserInteractionProvider,
 } from './interfaces.js'
 export type { ResolverConfig } from './resolver.js'
 

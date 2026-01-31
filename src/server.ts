@@ -149,7 +149,7 @@ function registerTools(
     registerCallHierarchyTool(server, capabilities, resolver)
   }
 
-  if (capabilities.userInteraction) {
+  if (capabilities.edit) {
     registerApplyEditTool(server, capabilities, resolver)
   }
 
@@ -596,8 +596,14 @@ function registerApplyEditTool(
   capabilities: IdeCapabilities,
   resolver: SymbolResolver,
 ): void {
-  const userInteraction = capabilities.userInteraction
-  if (!userInteraction) return
+  const editProvider = capabilities.edit
+  if (!editProvider) return
+
+  // Get the appropriate edit function (prefer previewAndApplyEdits over applyEdits)
+  const applyEditsFn =
+    editProvider.previewAndApplyEdits?.bind(editProvider) ??
+    editProvider.applyEdits?.bind(editProvider)
+  if (!applyEditsFn) return
 
   server.registerTool(
     'apply_edit',
@@ -635,8 +641,8 @@ function registerApplyEditTool(
           description: params.description,
         }
 
-        // Request user approval
-        const approved = await userInteraction.previewAndApplyEdits(operation)
+        // Apply the edit
+        const approved = await applyEditsFn(operation)
 
         const result: EditResult = approved
           ? { success: true, message: 'Edit successfully applied and saved.' }

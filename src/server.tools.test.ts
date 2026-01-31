@@ -3,11 +3,11 @@ import type { IdeCapabilities } from './capabilities.js'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
+  createMockEditProvider,
   createMockFileAccess,
   createMockHierarchyProvider,
   createMockReferencesProvider,
   createMockServer,
-  createMockUserInteraction,
   mockCodeSnippet,
 } from './server.fixtures.js'
 import { installMcpLspDriver } from './server.js'
@@ -189,12 +189,12 @@ describe('tool registration', () => {
     })
   })
 
-  it('should register apply_edit when userInteraction provider is available', () => {
+  it('should register apply_edit when edit provider is available', () => {
     const server = createMockServer()
-    const userInteraction = createMockUserInteraction()
+    const edit = createMockEditProvider()
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(),
-      userInteraction,
+      edit,
     }
 
     const { success } = installMcpLspDriver({ server, capabilities })
@@ -203,11 +203,11 @@ describe('tool registration', () => {
 
   it('should register apply_edit and return result when user approves', async () => {
     const server = createMockServer()
-    const userInteraction = createMockUserInteraction(true)
+    const edit = createMockEditProvider(true)
     const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(files),
-      userInteraction,
+      edit,
     }
 
     const { success } = installMcpLspDriver({ server, capabilities })
@@ -231,11 +231,11 @@ describe('tool registration', () => {
 
   it('should register apply_edit and return rejection when user declines', async () => {
     const server = createMockServer()
-    const userInteraction = createMockUserInteraction(false)
+    const edit = createMockEditProvider(false)
     const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(files),
-      userInteraction,
+      edit,
     }
 
     const { success } = installMcpLspDriver({ server, capabilities })

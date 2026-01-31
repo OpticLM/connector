@@ -41,11 +41,17 @@ const fileAccess = {
   readDirectory: (uri: string) => yourIDE.workspace.readDirectory(uri)
 }
 
-// 3. Implement User Interaction (required for edits)
-const userInteraction = {
+// 3. Implement Edit Provider (required for edits)
+const edit = {
+  // Option 1: Preview and apply with user approval
   previewAndApplyEdits: async (operation) => {
     // Show diff in your IDE and get user approval
     return await showDiffDialog(operation)
+  },
+  // Option 2: Apply directly without preview (use one or both)
+  applyEdits: async (operation) => {
+    // Apply edits directly
+    return await yourIDE.applyEdits(operation)
   }
 }
 
@@ -78,7 +84,7 @@ const outline = {
 // 5. Register LSP tools and resources on the server
 const capabilities: IdeCapabilities = {
   fileAccess,
-  userInteraction,
+  edit,
   definition,
   diagnostics,
   outline,
@@ -114,15 +120,20 @@ interface FileAccessProvider {
 }
 ```
 
-#### `UserInteractionProvider` (Required for edits)
+#### `EditProvider` (Required for edits)
 
-Handles user approval for edit operations:
+Handles applying changes to files. At least one method must be implemented:
 
 ```typescript
-interface UserInteractionProvider {
-  previewAndApplyEdits(operation: PendingEditOperation): Promise<boolean>
+interface EditProvider {
+  // Apply edits directly without user interaction
+  applyEdits?(operation: PendingEditOperation): Promise<boolean>
+  // Preview edits and get user approval before applying
+  previewAndApplyEdits?(operation: PendingEditOperation): Promise<boolean>
 }
 ```
+
+If both methods are provided, `previewAndApplyEdits` takes precedence.
 
 ### Capability Providers
 
@@ -246,7 +257,7 @@ Combine all providers into a single configuration:
 ```typescript
 interface IdeCapabilities {
   fileAccess: FileAccessProvider           // Required
-  userInteraction?: UserInteractionProvider // Required for apply_edit tool
+  edit?: EditProvider                      // Required for apply_edit tool
   definition?: DefinitionProvider           // Enables goto_definition tool
   references?: ReferencesProvider           // Enables find_references tool
   hierarchy?: HierarchyProvider             // Enables call_hierarchy tool

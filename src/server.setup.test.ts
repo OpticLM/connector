@@ -6,12 +6,12 @@ import type {
 import {
   createMockDefinitionProvider,
   createMockDiagnosticsProvider,
+  createMockEditProvider,
   createMockFileAccess,
   createMockHierarchyProvider,
   createMockOutlineProvider,
   createMockReferencesProvider,
   createMockServer,
-  createMockUserInteraction,
 } from './server.fixtures.js'
 import { installMcpLspDriver } from './server.js'
 import type { Diagnostic, DocumentSymbol } from './types.js'
@@ -32,7 +32,7 @@ describe('McpLspDriver', () => {
       const server = createMockServer()
       const capabilities: IdeCapabilities = {
         fileAccess: createMockFileAccess(),
-        userInteraction: createMockUserInteraction(),
+        edit: createMockEditProvider(),
         definition: createMockDefinitionProvider(),
         references: createMockReferencesProvider(),
         hierarchy: createMockHierarchyProvider(),
@@ -237,12 +237,12 @@ describe('diagnostics subscription', () => {
 describe('edit operations', () => {
   it('should create pending edit operation with correct structure', () => {
     const server = createMockServer()
-    const userInteraction = createMockUserInteraction(true)
+    const edit = createMockEditProvider(true)
     const files = { 'test.ts': 'const foo = 1;' }
 
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(files),
-      userInteraction,
+      edit,
     }
 
     const { success } = installMcpLspDriver({ server, capabilities })
@@ -251,12 +251,12 @@ describe('edit operations', () => {
 
   it('should handle user rejection of edits', () => {
     const server = createMockServer()
-    const userInteraction = createMockUserInteraction(false)
+    const edit = createMockEditProvider(false)
     const files = { 'test.ts': 'const foo = 1;' }
 
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(files),
-      userInteraction,
+      edit,
     }
 
     const { success } = installMcpLspDriver({ server, capabilities })

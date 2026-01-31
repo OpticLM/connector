@@ -8,10 +8,7 @@
  * Fuzzy -> Exact conversion before calling these.
  */
 
-import type {
-  FileAccessProvider,
-  UserInteractionProvider,
-} from './interfaces.js'
+import type { EditProvider, FileAccessProvider } from './interfaces.js'
 import type {
   CodeSnippet,
   Diagnostic,
@@ -273,8 +270,8 @@ export interface IdeCapabilities {
   /** Mandatory: Provides file system access for reading files from disk */
   fileAccess: FileAccessProvider
 
-  /** Optional: Provides user interaction for edit operations */
-  userInteraction?: UserInteractionProvider
+  /** Optional: Provides edit capabilities for applying changes */
+  edit?: EditProvider
 
   /** Optional: Provides go-to-definition functionality */
   definition?: DefinitionProvider

@@ -14,10 +14,7 @@ import type {
   OutlineProvider,
   ReferencesProvider,
 } from './capabilities.js'
-import type {
-  FileAccessProvider,
-  UserInteractionProvider,
-} from './interfaces.js'
+import type { EditProvider, FileAccessProvider } from './interfaces.js'
 import type {
   CodeSnippet,
   Diagnostic,
@@ -108,9 +105,7 @@ export function createMockOutlineProvider(
   }
 }
 
-export function createMockUserInteraction(
-  approved = true,
-): UserInteractionProvider {
+export function createMockEditProvider(approved = true): EditProvider {
   return {
     previewAndApplyEdits: vi.fn(async () => approved),
   }
