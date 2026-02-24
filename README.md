@@ -16,6 +16,8 @@ npm install mcp-lsp-driver
 pnpm add mcp-lsp-driver
 ```
 
+The package ships dual ESM and CJS builds, so both `import` and `require` work out of the box.
+
 ## Quick Start
 
 ```typescript
@@ -581,6 +583,53 @@ type EditResult =
   | { success: true; message: string }
   | { success: false; message: string; reason: 'UserRejected' | 'IOError' | 'ValidationFailed' }
 ```
+
+## Pipe IPC (Out-of-Process)
+
+When the MCP server runs in a separate process from the IDE plugin (e.g., spawned via stdio transport), the Pipe IPC layer lets the two communicate over a named pipe.
+
+**IDE plugin side** — expose capabilities:
+
+```typescript
+import { serveLspPipe, type IdeCapabilities } from 'mcp-lsp-driver'
+
+const capabilities: IdeCapabilities = {
+  fileAccess: { /* ... */ },
+  definition: { /* ... */ },
+  // ...
+}
+
+const server = await serveLspPipe({
+  pipeName: 'my-ide-lsp',
+  capabilities,
+})
+// server.pipePath  — the resolved pipe path
+// server.connectionCount — number of connected clients
+// await server.close() — shut down
+```
+
+**MCP server side** — connect and use proxy capabilities:
+
+```typescript
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { connectLspPipe, installMcpLspDriver } from 'mcp-lsp-driver'
+
+const conn = await connectLspPipe({
+  pipeName: 'my-ide-lsp',
+  connectTimeout: 5000, // optional, default 5000ms
+})
+
+// conn.capabilities is a full IdeCapabilities proxy
+// conn.availableMethods lists the methods the server exposes
+
+const mcpServer = new McpServer({ name: 'my-mcp', version: '1.0.0' })
+installMcpLspDriver({ server: mcpServer, capabilities: conn.capabilities })
+
+// When done:
+conn.disconnect()
+```
+
+The handshake automatically discovers which providers the server exposes and builds typed proxies. Diagnostics change notifications (`onDiagnosticsChanged`) are forwarded as push notifications to all connected clients. Multiple clients can connect to the same pipe simultaneously.
 
 ## Development
 

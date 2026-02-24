@@ -28,12 +28,15 @@ export type {
   EditProvider,
   FileAccessProvider,
 } from './interfaces.js'
+export type { ConnectLspPipeOptions, LspPipeConnection } from './pipe-client.js'
+export { connectLspPipe } from './pipe-client.js'
+export type { LspPipeServer, ServeLspPipeOptions } from './pipe-server.js'
+// Pipe IPC
+export { serveLspPipe } from './pipe-server.js'
 export type { ResolverConfig } from './resolver.js'
-
 // Symbol Resolver
 export { SymbolResolutionError, SymbolResolver } from './resolver.js'
 export type { McpLspDriverConfig } from './server.js'
-
 // Driver
 export { installMcpLspDriver } from './server.js'
 // Core Data Models

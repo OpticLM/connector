@@ -405,7 +405,7 @@ function registerDiagnosticsResources(
   )
 
   server.registerResource(
-    'file-diagnostics',
+    'diagnostics',
     fileDiagnosticsTemplate,
     {
       description:
@@ -548,7 +548,7 @@ function registerOutlineResource(
   })
 
   server.registerResource(
-    'file-outline',
+    'outline',
     outlineTemplate,
     {
       description:
@@ -686,7 +686,7 @@ function registerFilesystemResource(
     })
 
     server.registerResource(
-      'fileTree',
+      'filetree',
       fileTreeTemplate,
       {
         description:
