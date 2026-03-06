@@ -1,0 +1,278 @@
+/**
+ * Capability Merging for MCP LSP Driver SDK
+ *
+ * Merges multiple IdeCapabilities into a single composite object
+ * so that overlapping providers aggregate their results.
+ */
+
+import type {
+  DefinitionProvider,
+  DiagnosticsProvider,
+  FrontmatterProvider,
+  GlobalFindProvider,
+  GraphProvider,
+  HierarchyProvider,
+  IdeCapabilities,
+  OnDiagnosticsChangedCallback,
+  OutlineProvider,
+  ReferencesProvider,
+} from './capabilities.js'
+import type { EditProvider, FileAccessProvider } from './interfaces.js'
+
+// ============================================================================
+// Per-provider merge helpers
+// ============================================================================
+
+function mergeFileAccess(
+  providers: FileAccessProvider[],
+): FileAccessProvider | undefined {
+  // First-wins — all read the same filesystem
+  return providers[0]
+}
+
+function mergeEdit(providers: EditProvider[]): EditProvider | undefined {
+  return providers[0]
+}
+
+function mergeDefinition(
+  providers: DefinitionProvider[],
+): DefinitionProvider | undefined {
+  if (providers.length === 0) return undefined
+  if (providers.length === 1) return providers[0]
+  return {
+    async provideDefinition(uri, position) {
+      const results = await Promise.all(
+        providers.map((p) => p.provideDefinition(uri, position)),
+      )
+      return results.flat()
+    },
+  }
+}
+
+function mergeReferences(
+  providers: ReferencesProvider[],
+): ReferencesProvider | undefined {
+  if (providers.length === 0) return undefined
+  if (providers.length === 1) return providers[0]
+  return {
+    async provideReferences(uri, position) {
+      const results = await Promise.all(
+        providers.map((p) => p.provideReferences(uri, position)),
+      )
+      return results.flat()
+    },
+  }
+}
+
+function mergeHierarchy(
+  providers: HierarchyProvider[],
+): HierarchyProvider | undefined {
+  if (providers.length === 0) return undefined
+  if (providers.length === 1) return providers[0]
+  return {
+    async provideCallHierarchy(uri, position, direction) {
+      const results = await Promise.all(
+        providers.map((p) => p.provideCallHierarchy(uri, position, direction)),
+      )
+      return results.flat()
+    },
+  }
+}
+
+function mergeDiagnostics(
+  providers: DiagnosticsProvider[],
+): DiagnosticsProvider | undefined {
+  if (providers.length === 0) return undefined
+  if (providers.length === 1) return providers[0]
+
+  const merged: DiagnosticsProvider = {
+    async provideDiagnostics(uri) {
+      const results = await Promise.all(
+        providers.map((p) => p.provideDiagnostics(uri)),
+      )
+      return results.flat()
+    },
+  }
+
+  // Merge getWorkspaceDiagnostics if any provider has it
+  const workspaceProviders = providers
+    .map((p) => p.getWorkspaceDiagnostics)
+    .filter((fn): fn is NonNullable<typeof fn> => fn != null)
+  if (workspaceProviders.length > 0) {
+    merged.getWorkspaceDiagnostics = async () => {
+      const results = await Promise.all(workspaceProviders.map((fn) => fn()))
+      return results.flat()
+    }
+  }
+
+  return merged
+}
+
+function mergeOutline(
+  providers: OutlineProvider[],
+): OutlineProvider | undefined {
+  if (providers.length === 0) return undefined
+  if (providers.length === 1) return providers[0]
+  return {
+    async provideDocumentSymbols(uri) {
+      const results = await Promise.all(
+        providers.map((p) => p.provideDocumentSymbols(uri)),
+      )
+      return results.flat()
+    },
+  }
+}
+
+function mergeGlobalFind(
+  providers: GlobalFindProvider[],
+): GlobalFindProvider | undefined {
+  if (providers.length === 0) return undefined
+  if (providers.length === 1) return providers[0]
+  return {
+    async globalFind(query, options) {
+      const results = await Promise.all(
+        providers.map((p) => p.globalFind(query, options)),
+      )
+      return results.flat()
+    },
+    async globalReplace(query, replaceWith, options) {
+      const results = await Promise.all(
+        providers.map((p) => p.globalReplace(query, replaceWith, options)),
+      )
+      return results.reduce((sum, n) => sum + n, 0)
+    },
+  }
+}
+
+function mergeGraph(providers: GraphProvider[]): GraphProvider | undefined {
+  if (providers.length === 1) return providers[0]
+
+  const [first] = providers
+  if (!first) return undefined
+
+  return {
+    async getLinkStructure() {
+      const results = await Promise.all(
+        providers.map((p) => p.getLinkStructure()),
+      )
+      return results.flat()
+    },
+    async resolveOutlinks(path) {
+      const results = await Promise.all(
+        providers.map((p) => p.resolveOutlinks(path)),
+      )
+      return results.flat()
+    },
+    async resolveBacklinks(path) {
+      const results = await Promise.all(
+        providers.map((p) => p.resolveBacklinks(path)),
+      )
+      return results.flat()
+    },
+    // Mutation — first provider wins
+    addLink: (path, pattern, linkTo) => first.addLink(path, pattern, linkTo),
+  }
+}
+
+function mergeFrontmatter(
+  providers: FrontmatterProvider[],
+): FrontmatterProvider | undefined {
+  if (providers.length === 1) return providers[0]
+
+  const [first] = providers
+  if (!first) return undefined
+
+  return {
+    async getFrontmatterStructure(property, path?) {
+      const results = await Promise.all(
+        providers.map((p) => p.getFrontmatterStructure(property, path)),
+      )
+      return results.flat()
+    },
+    async getFrontmatter(path) {
+      const results = await Promise.all(
+        providers.map((p) => p.getFrontmatter(path)),
+      )
+      return Object.assign({}, ...results)
+    },
+    // Mutation — first provider wins
+    setFrontmatter: (path, property, value) =>
+      first.setFrontmatter(path, property, value),
+  }
+}
+
+function mergeOnDiagnosticsChanged(
+  handlers: ((cb: OnDiagnosticsChangedCallback) => void)[],
+): ((callback: OnDiagnosticsChangedCallback) => void) | undefined {
+  if (handlers.length === 0) return undefined
+  if (handlers.length === 1) return handlers[0]
+  return (callback: OnDiagnosticsChangedCallback) => {
+    for (const handler of handlers) {
+      handler(callback)
+    }
+  }
+}
+
+// ============================================================================
+// Public API
+// ============================================================================
+
+/**
+ * Collect all non-undefined values of a given key from a list of objects.
+ */
+function collect<T, K extends keyof T>(list: T[], key: K): NonNullable<T[K]>[] {
+  const result: NonNullable<T[K]>[] = []
+  for (const item of list) {
+    const val = item[key]
+    if (val != null) {
+      result.push(val as NonNullable<T[K]>)
+    }
+  }
+  return result
+}
+
+/**
+ * Merges multiple IdeCapabilities objects into a single composite.
+ *
+ * - Read providers concat their results via Promise.all + flat.
+ * - Write/mutation providers use the first available ("first wins").
+ * - onDiagnosticsChanged registers the callback on every capability that provides it.
+ *
+ * @param capsList - Array of IdeCapabilities to merge
+ * @returns A single merged IdeCapabilities object
+ * @throws Error if capsList is empty or no fileAccess provider is present
+ */
+export function mergeCapabilities(
+  capsList: IdeCapabilities[],
+): IdeCapabilities {
+  const [first] = capsList
+  if (!first) {
+    throw new Error('mergeCapabilities requires at least one IdeCapabilities')
+  }
+  if (capsList.length === 1) {
+    return first
+  }
+
+  const fileAccess = mergeFileAccess(collect(capsList, 'fileAccess'))
+  if (!fileAccess) {
+    throw new Error(
+      'mergeCapabilities: at least one IdeCapabilities must provide fileAccess',
+    )
+  }
+
+  return {
+    fileAccess,
+    edit: mergeEdit(collect(capsList, 'edit')),
+    definition: mergeDefinition(collect(capsList, 'definition')),
+    references: mergeReferences(collect(capsList, 'references')),
+    hierarchy: mergeHierarchy(collect(capsList, 'hierarchy')),
+    diagnostics: mergeDiagnostics(collect(capsList, 'diagnostics')),
+    outline: mergeOutline(collect(capsList, 'outline')),
+    globalFind: mergeGlobalFind(collect(capsList, 'globalFind')),
+    graph: mergeGraph(collect(capsList, 'graph')),
+    frontmatter: mergeFrontmatter(collect(capsList, 'frontmatter')),
+    onDiagnosticsChanged: mergeOnDiagnosticsChanged(
+      collect(capsList, 'onDiagnosticsChanged'),
+    ),
+  }
+}

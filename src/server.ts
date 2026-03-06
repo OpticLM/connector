@@ -18,6 +18,7 @@ import {
   makeToolResult,
   normalizeUri,
 } from './formatting.js'
+import { mergeCapabilities } from './merge.js'
 
 /**
  * Parses a line range fragment from a URI (e.g., "#L21" or "#L21-L28").
@@ -95,13 +96,17 @@ export interface McpLspDriverConfig {
  */
 export function installMcpLspDriver({
   server,
-  capabilities,
+  capabilities: rawCapabilities,
   config,
 }: {
   server: McpServer
-  capabilities: IdeCapabilities
+  capabilities: IdeCapabilities | IdeCapabilities[]
   config?: McpLspDriverConfig
 }) {
+  const capabilities = Array.isArray(rawCapabilities)
+    ? mergeCapabilities(rawCapabilities)
+    : rawCapabilities
+
   const resolver = new SymbolResolver(
     capabilities.fileAccess,
     config?.resolverConfig,

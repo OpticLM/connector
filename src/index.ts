@@ -28,6 +28,8 @@ export type {
   EditProvider,
   FileAccessProvider,
 } from './interfaces.js'
+// Merge
+export { mergeCapabilities } from './merge.js'
 export type { ConnectLspPipeOptions, LspPipeConnection } from './pipe-client.js'
 export { connectLspPipe } from './pipe-client.js'
 export type { LspPipeServer, ServeLspPipeOptions } from './pipe-server.js'
