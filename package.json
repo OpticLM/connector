@@ -1,6 +1,6 @@
 {
   "name": "mcp-lsp-driver",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP LSP Driver for IDE plugins to easily expose LSP features via an MCP server.",
   "type": "module",
   "types": "dist/index.d.ts",
@@ -33,7 +33,7 @@
     "url": "https://github.com/OpticLM/mcp-lspdriver-ts"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "vscode-languageserver-protocol": "^3.17.5",
     "zod": "^4.3.6"
   },
@@ -43,11 +43,11 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.10",
-    "@types/node": "^22.19.7",
+    "@biomejs/biome": "2.4.6",
+    "@types/node": "^25",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "typescript": "^5.9",
+    "vitest": "^4"
   },
   "engines": {
     "node": ">=18.0.0"
