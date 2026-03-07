@@ -22,7 +22,6 @@ export type {
   OutlineProvider,
   ReferencesProvider,
 } from './capabilities.js'
-
 // Infrastructure Interfaces
 export type {
   EditProvider,

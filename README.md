@@ -16,8 +16,6 @@ npm install mcp-lsp-driver
 pnpm add mcp-lsp-driver
 ```
 
-The package ships dual ESM and CJS builds, so both `import` and `require` work out of the box.
-
 ## Quick Start
 
 ```typescript
@@ -630,6 +628,92 @@ conn.disconnect()
 ```
 
 The handshake automatically discovers which providers the server exposes and builds typed proxies. Diagnostics change notifications (`onDiagnosticsChanged`) are forwarded as push notifications to all connected clients. Multiple clients can connect to the same pipe simultaneously.
+
+## LSP Client (Built-in)
+
+For standalone MCP servers that need to communicate directly with an LSP server (e.g., when not running inside an IDE plugin), `LspClient` spawns a language server process and automatically creates capability providers based on the server's reported capabilities.
+
+```typescript
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { createLspClient, installMcpLspDriver } from 'mcp-lsp-driver'
+import * as fs from 'fs/promises'
+
+// 1. Create and start the LSP client
+const lsp = createLspClient({
+  command: 'typescript-language-server',
+  args: ['--stdio'],
+  workspacePath: '/path/to/project',
+  readFile: (path) => fs.readFile(path, 'utf-8'),
+})
+
+await lsp.start()
+
+// 2. Wire capabilities into MCP
+const server = new McpServer({ name: 'my-mcp', version: '1.0.0' })
+installMcpLspDriver({
+  server,
+  capabilities: {
+    fileAccess: {
+      readFile: (uri) => fs.readFile(uri, 'utf-8'),
+      getFileTree: async () => [],
+      readDirectory: async () => [],
+    },
+    // Providers are automatically created based on server capabilities
+    definition: lsp.definition,
+    references: lsp.references,
+    hierarchy: lsp.hierarchy,
+    outline: lsp.outline,
+    diagnostics: lsp.diagnostics,
+    onDiagnosticsChanged: lsp.onDiagnosticsChanged,
+  },
+})
+
+const transport = new StdioServerTransport()
+await server.connect(transport)
+```
+
+### `LspClientOptions`
+
+```typescript
+interface LspClientOptions {
+  command: string               // LSP server command to spawn
+  args?: string[]               // Command arguments (e.g., ['--stdio'])
+  workspacePath: string         // Absolute path to the workspace root
+  readFile: (path: string) => Promise<string>  // File reader for document sync
+  env?: Record<string, string>  // Additional environment variables
+  initializationOptions?: unknown  // LSP initializationOptions
+  documentIdleTimeout?: number  // Auto-close open docs after ms (default: 30000)
+  requestTimeout?: number       // Timeout for LSP requests in ms (default: 30000)
+}
+```
+
+### How It Works
+
+1. `start()` spawns the LSP server process and performs the initialize/initialized handshake
+2. The server's `ServerCapabilities` response determines which providers are created:
+   - `definitionProvider` &rarr; `lsp.definition`
+   - `referencesProvider` &rarr; `lsp.references`
+   - `callHierarchyProvider` &rarr; `lsp.hierarchy`
+   - `documentSymbolProvider` &rarr; `lsp.outline`
+   - Diagnostics are always available (via `textDocument/publishDiagnostics` notifications)
+3. Providers that the server does not support remain `undefined`
+4. Documents are automatically opened/closed with the server on demand, with an idle timeout for cleanup
+
+### Lifecycle
+
+```typescript
+const lsp = createLspClient({ /* ... */ })
+
+lsp.getState()  // 'idle'
+await lsp.start()
+lsp.getState()  // 'running'
+
+// Use lsp.definition, lsp.references, etc.
+
+await lsp.stop()
+lsp.getState()  // 'dead'
+```
 
 ## Development
 

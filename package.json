@@ -3,27 +3,18 @@
   "version": "1.1.0",
   "description": "MCP LSP Driver for IDE plugins to easily expose LSP features via an MCP server.",
   "type": "module",
-  "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./lsp": {
+      "types": "./dist/lsp/index.d.ts",
+      "default": "./dist/lsp/index.js"
     }
   },
-  "files": [
-    "dist/**/*.js",
-    "dist/**/*.cjs",
-    "dist/**/*.d.ts",
-    "dist/**/*.d.cts",
-    "LICENSE"
-  ],
+  "files": ["dist/**/*.js", "dist/**/*.d.ts", "LICENSE"],
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
@@ -43,7 +34,13 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
+    "vscode-languageserver-protocol": "^3.17.5",
     "zod": "^4.3.6"
+  },
+  "peerDependenciesMeta": {
+    "vscode-languageserver-protocol": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.10",
