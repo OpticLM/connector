@@ -524,6 +524,40 @@ installMcpLspDriver({ server, capabilities, config: {
 }})
 ```
 
+## Merging Capabilities
+
+When you have multiple providers (e.g., an LSP client and a pipe connection), use `mergeCapabilities` to combine them into a single `IdeCapabilities` object. Pass a fallback `FileAccessProvider` that is used when none of the partials supply one.
+
+```typescript
+import { mergeCapabilities, installMcpLspDriver } from 'mcp-lsp-driver'
+import type { PartialIdeCapabilities } from 'mcp-lsp-driver'
+
+const lspCaps: PartialIdeCapabilities = {
+  definition: lsp.definition,
+  references: lsp.references,
+}
+
+const pipeCaps: PartialIdeCapabilities = {
+  diagnostics: pipeDiagnostics,
+  outline: pipeOutline,
+}
+
+const fallbackFileAccess = {
+  readFile: (uri) => fs.readFile(uri, 'utf-8'),
+  getFileTree: async () => [],
+  readDirectory: async () => [],
+}
+
+const merged = mergeCapabilities([lspCaps, pipeCaps], fallbackFileAccess)
+
+installMcpLspDriver({ server, capabilities: merged })
+```
+
+- **Read providers** (definition, references, hierarchy, diagnostics, outline, globalFind, graph, frontmatter) concat their results via `Promise.all` + `flat`.
+- **Write/mutation providers** (edit, `addLink`, `setFrontmatter`) use the first available ("first wins").
+- **`onDiagnosticsChanged`** registers the callback on every partial that provides it.
+- **`fileAccess`** uses the first partial that provides it, falling back to the `fallbackFileAccess` argument.
+
 ## Type Definitions
 
 ### Position Types

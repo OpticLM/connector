@@ -20,6 +20,7 @@ export type {
   IdeCapabilities,
   OnDiagnosticsChangedCallback,
   OutlineProvider,
+  PartialIdeCapabilities,
   ReferencesProvider,
 } from './capabilities.js'
 // Infrastructure Interfaces

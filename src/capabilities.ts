@@ -306,3 +306,9 @@ export interface IdeCapabilities {
    */
   onDiagnosticsChanged?: (callback: OnDiagnosticsChangedCallback) => void
 }
+
+/**
+ * A partial set of IDE capabilities where all fields (including fileAccess) are optional.
+ * Used with `mergeCapabilities` to combine multiple partial providers into a single IdeCapabilities.
+ */
+export type PartialIdeCapabilities = Partial<IdeCapabilities>

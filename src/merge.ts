@@ -15,6 +15,7 @@ import type {
   IdeCapabilities,
   OnDiagnosticsChangedCallback,
   OutlineProvider,
+  PartialIdeCapabilities,
   ReferencesProvider,
 } from './capabilities.js'
 import type { EditProvider, FileAccessProvider } from './interfaces.js'
@@ -232,33 +233,27 @@ function collect<T, K extends keyof T>(list: T[], key: K): NonNullable<T[K]>[] {
 }
 
 /**
- * Merges multiple IdeCapabilities objects into a single composite.
+ * Merges multiple partial IdeCapabilities objects into a single composite,
+ * using a fallback FileAccessProvider when none of the partials supply one.
  *
  * - Read providers concat their results via Promise.all + flat.
  * - Write/mutation providers use the first available ("first wins").
  * - onDiagnosticsChanged registers the callback on every capability that provides it.
  *
- * @param capsList - Array of IdeCapabilities to merge
+ * @param capsList - Array of PartialIdeCapabilities to merge
+ * @param fallbackFileAccess - FileAccessProvider used when no partial provides fileAccess
  * @returns A single merged IdeCapabilities object
- * @throws Error if capsList is empty or no fileAccess provider is present
  */
 export function mergeCapabilities(
-  capsList: IdeCapabilities[],
+  capsList: PartialIdeCapabilities[],
+  fallbackFileAccess: FileAccessProvider,
 ): IdeCapabilities {
-  const [first] = capsList
-  if (!first) {
-    throw new Error('mergeCapabilities requires at least one IdeCapabilities')
-  }
-  if (capsList.length === 1) {
-    return first
+  if (capsList.length === 0) {
+    return { fileAccess: fallbackFileAccess }
   }
 
-  const fileAccess = mergeFileAccess(collect(capsList, 'fileAccess'))
-  if (!fileAccess) {
-    throw new Error(
-      'mergeCapabilities: at least one IdeCapabilities must provide fileAccess',
-    )
-  }
+  const fileAccess =
+    mergeFileAccess(collect(capsList, 'fileAccess')) ?? fallbackFileAccess
 
   return {
     fileAccess,

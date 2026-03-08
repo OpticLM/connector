@@ -3,8 +3,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type {
   DiagnosticsProvider,
-  IdeCapabilities,
   OnDiagnosticsChangedCallback,
+  PartialIdeCapabilities,
 } from './capabilities.js'
 import { mergeCapabilities } from './merge.js'
 import {
@@ -18,38 +18,43 @@ import {
   createMockHierarchyProvider,
   createMockOutlineProvider,
   createMockReferencesProvider,
-  createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
 import type { CodeSnippet, ExactPosition, UnifiedUri } from './types.js'
 
 const dummyUri: UnifiedUri = 'test.ts'
 const dummyPos: ExactPosition = { line: 0, character: 0 }
+const fallbackFileAccess = createMockFileAccess()
 
-function makeCaps(overrides: Partial<IdeCapabilities> = {}): IdeCapabilities {
-  return { fileAccess: createMockFileAccess(), ...overrides }
+function makeCaps(
+  overrides: PartialIdeCapabilities = {},
+): PartialIdeCapabilities {
+  return { ...overrides }
 }
 
-describe('mergeCapabilities – validation', () => {
-  it('throws when called with an empty array', () => {
-    expect(() => mergeCapabilities([])).toThrow('at least one')
-  })
-
-  it('returns the single element unchanged when length is 1', () => {
-    const caps = makeCaps()
-    expect(mergeCapabilities([caps])).toBe(caps)
+describe('mergeCapabilities – empty list', () => {
+  it('returns capabilities with only the fallback fileAccess', () => {
+    const merged = mergeCapabilities([], fallbackFileAccess)
+    expect(merged.fileAccess).toBe(fallbackFileAccess)
+    expect(merged.definition).toBeUndefined()
   })
 })
 
 describe('mergeCapabilities – fileAccess', () => {
-  it('uses the first fileAccess provider', async () => {
+  it('uses partial fileAccess over fallback when provided', async () => {
     const fa1 = createMockFileAccess({ 'a.ts': 'first' })
-    const fa2 = createMockFileAccess({ 'a.ts': 'second' })
-    const merged = mergeCapabilities([
-      makeCaps({ fileAccess: fa1 }),
-      makeCaps({ fileAccess: fa2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ fileAccess: fa1 })],
+      fallbackFileAccess,
+    )
     expect(await merged.fileAccess.readFile('a.ts')).toBe('first')
+  })
+
+  it('falls back to fallbackFileAccess when no partial provides it', async () => {
+    const merged = mergeCapabilities(
+      [makeCaps(), makeCaps()],
+      fallbackFileAccess,
+    )
+    expect(merged.fileAccess).toBe(fallbackFileAccess)
   })
 })
 
@@ -57,19 +62,19 @@ describe('mergeCapabilities – edit', () => {
   it('uses the first edit provider', () => {
     const e1 = createMockEditProvider(true)
     const e2 = createMockEditProvider(false)
-    const merged = mergeCapabilities([
-      makeCaps({ edit: e1 }),
-      makeCaps({ edit: e2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ edit: e1 }), makeCaps({ edit: e2 })],
+      fallbackFileAccess,
+    )
     expect(merged.edit).toBe(e1)
   })
 
   it('picks the first available edit provider across sparse caps', () => {
     const e2 = createMockEditProvider(true)
-    const merged = mergeCapabilities([
-      makeCaps(), // no edit
-      makeCaps({ edit: e2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps(), makeCaps({ edit: e2 })],
+      fallbackFileAccess,
+    )
     expect(merged.edit).toBe(e2)
   })
 })
@@ -92,10 +97,13 @@ describe('mergeCapabilities – definition', () => {
       },
       content: 'bbb',
     }
-    const merged = mergeCapabilities([
-      makeCaps({ definition: createMockDefinitionProvider([snippetA]) }),
-      makeCaps({ definition: createMockDefinitionProvider([snippetB]) }),
-    ])
+    const merged = mergeCapabilities(
+      [
+        makeCaps({ definition: createMockDefinitionProvider([snippetA]) }),
+        makeCaps({ definition: createMockDefinitionProvider([snippetB]) }),
+      ],
+      fallbackFileAccess,
+    )
     const result = await merged.definition?.provideDefinition(
       dummyUri,
       dummyPos,
@@ -106,7 +114,10 @@ describe('mergeCapabilities – definition', () => {
   })
 
   it('returns undefined when no caps provide definition', () => {
-    const merged = mergeCapabilities([makeCaps(), makeCaps()])
+    const merged = mergeCapabilities(
+      [makeCaps(), makeCaps()],
+      fallbackFileAccess,
+    )
     expect(merged.definition).toBeUndefined()
   })
 })
@@ -129,10 +140,13 @@ describe('mergeCapabilities – references', () => {
       },
       content: 'refB',
     }
-    const merged = mergeCapabilities([
-      makeCaps({ references: createMockReferencesProvider([snippetA]) }),
-      makeCaps({ references: createMockReferencesProvider([snippetB]) }),
-    ])
+    const merged = mergeCapabilities(
+      [
+        makeCaps({ references: createMockReferencesProvider([snippetA]) }),
+        makeCaps({ references: createMockReferencesProvider([snippetB]) }),
+      ],
+      fallbackFileAccess,
+    )
     const result = await merged.references?.provideReferences(
       dummyUri,
       dummyPos,
@@ -159,10 +173,13 @@ describe('mergeCapabilities – hierarchy', () => {
       },
       content: 'hB',
     }
-    const merged = mergeCapabilities([
-      makeCaps({ hierarchy: createMockHierarchyProvider([snippetA]) }),
-      makeCaps({ hierarchy: createMockHierarchyProvider([snippetB]) }),
-    ])
+    const merged = mergeCapabilities(
+      [
+        makeCaps({ hierarchy: createMockHierarchyProvider([snippetA]) }),
+        makeCaps({ hierarchy: createMockHierarchyProvider([snippetB]) }),
+      ],
+      fallbackFileAccess,
+    )
     const result = await merged.hierarchy?.provideCallHierarchy(
       dummyUri,
       dummyPos,
@@ -196,10 +213,10 @@ describe('mergeCapabilities – diagnostics', () => {
         message: 'warn1',
       },
     ])
-    const merged = mergeCapabilities([
-      makeCaps({ diagnostics: d1 }),
-      makeCaps({ diagnostics: d2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ diagnostics: d1 }), makeCaps({ diagnostics: d2 })],
+      fallbackFileAccess,
+    )
     const result = await merged.diagnostics?.provideDiagnostics('a.ts')
     expect(result).toHaveLength(2)
     expect(result![0].message).toBe('err1')
@@ -225,10 +242,10 @@ describe('mergeCapabilities – diagnostics', () => {
     const d2: DiagnosticsProvider = {
       provideDiagnostics: vi.fn(async () => []),
     }
-    const merged = mergeCapabilities([
-      makeCaps({ diagnostics: d1 }),
-      makeCaps({ diagnostics: d2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ diagnostics: d1 }), makeCaps({ diagnostics: d2 })],
+      fallbackFileAccess,
+    )
     expect(merged.diagnostics?.getWorkspaceDiagnostics).toBeDefined()
     const result = await merged.diagnostics?.getWorkspaceDiagnostics?.()
     expect(result).toHaveLength(1)
@@ -242,10 +259,10 @@ describe('mergeCapabilities – diagnostics', () => {
     const d2: DiagnosticsProvider = {
       provideDiagnostics: vi.fn(async () => []),
     }
-    const merged = mergeCapabilities([
-      makeCaps({ diagnostics: d1 }),
-      makeCaps({ diagnostics: d2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ diagnostics: d1 }), makeCaps({ diagnostics: d2 })],
+      fallbackFileAccess,
+    )
     expect(merged.diagnostics?.getWorkspaceDiagnostics).toBeUndefined()
   })
 })
@@ -280,10 +297,10 @@ describe('mergeCapabilities – outline', () => {
         },
       },
     ])
-    const merged = mergeCapabilities([
-      makeCaps({ outline: o1 }),
-      makeCaps({ outline: o2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ outline: o1 }), makeCaps({ outline: o2 })],
+      fallbackFileAccess,
+    )
     const result = await merged.outline?.provideDocumentSymbols(dummyUri)
     expect(result).toHaveLength(2)
     expect(result![0].name).toBe('ClassA')
@@ -305,10 +322,10 @@ describe('mergeCapabilities – globalFind', () => {
     const g2 = createMockGlobalFindProvider([
       { uri: 'b.ts', line: 2, column: 1, matchText: 'foo', context: 'let foo' },
     ])
-    const merged = mergeCapabilities([
-      makeCaps({ globalFind: g1 }),
-      makeCaps({ globalFind: g2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ globalFind: g1 }), makeCaps({ globalFind: g2 })],
+      fallbackFileAccess,
+    )
     const result = await merged.globalFind?.globalFind('foo', {
       caseSensitive: false,
       exactMatch: false,
@@ -320,10 +337,10 @@ describe('mergeCapabilities – globalFind', () => {
   it('sums globalReplace counts', async () => {
     const g1 = createMockGlobalFindProvider([], 3)
     const g2 = createMockGlobalFindProvider([], 5)
-    const merged = mergeCapabilities([
-      makeCaps({ globalFind: g1 }),
-      makeCaps({ globalFind: g2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ globalFind: g1 }), makeCaps({ globalFind: g2 })],
+      fallbackFileAccess,
+    )
     const count = await merged.globalFind?.globalReplace('foo', 'bar', {
       caseSensitive: false,
       exactMatch: false,
@@ -349,10 +366,13 @@ describe('mergeCapabilities – graph', () => {
       line: 2,
       column: 1,
     }
-    const merged = mergeCapabilities([
-      makeCaps({ graph: createMockGraphProvider([link1]) }),
-      makeCaps({ graph: createMockGraphProvider([link2]) }),
-    ])
+    const merged = mergeCapabilities(
+      [
+        makeCaps({ graph: createMockGraphProvider([link1]) }),
+        makeCaps({ graph: createMockGraphProvider([link2]) }),
+      ],
+      fallbackFileAccess,
+    )
     const result = await merged.graph?.getLinkStructure()
     expect(result).toHaveLength(2)
   })
@@ -372,10 +392,13 @@ describe('mergeCapabilities – graph', () => {
       line: 2,
       column: 1,
     }
-    const merged = mergeCapabilities([
-      makeCaps({ graph: createMockGraphProvider([link1]) }),
-      makeCaps({ graph: createMockGraphProvider([link2]) }),
-    ])
+    const merged = mergeCapabilities(
+      [
+        makeCaps({ graph: createMockGraphProvider([link1]) }),
+        makeCaps({ graph: createMockGraphProvider([link2]) }),
+      ],
+      fallbackFileAccess,
+    )
     expect(await merged.graph?.resolveOutlinks('x.md')).toHaveLength(2)
     expect(await merged.graph?.resolveBacklinks('x.md')).toHaveLength(2)
   })
@@ -383,10 +406,10 @@ describe('mergeCapabilities – graph', () => {
   it('delegates addLink to the first provider', async () => {
     const g1 = createMockGraphProvider([])
     const g2 = createMockGraphProvider([])
-    const merged = mergeCapabilities([
-      makeCaps({ graph: g1 }),
-      makeCaps({ graph: g2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ graph: g1 }), makeCaps({ graph: g2 })],
+      fallbackFileAccess,
+    )
     await merged.graph?.addLink('a.md', 'pat', 'b.md')
     expect(g1.addLink).toHaveBeenCalledWith('a.md', 'pat', 'b.md')
     expect(g2.addLink).not.toHaveBeenCalled()
@@ -401,10 +424,10 @@ describe('mergeCapabilities – frontmatter', () => {
     const f2 = createMockFrontmatterProvider({}, [
       { path: 'b.md', value: 'tag2' },
     ])
-    const merged = mergeCapabilities([
-      makeCaps({ frontmatter: f1 }),
-      makeCaps({ frontmatter: f2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ frontmatter: f1 }), makeCaps({ frontmatter: f2 })],
+      fallbackFileAccess,
+    )
     const result = await merged.frontmatter?.getFrontmatterStructure('tags')
     expect(result).toHaveLength(2)
   })
@@ -412,10 +435,10 @@ describe('mergeCapabilities – frontmatter', () => {
   it('merges getFrontmatter via Object.assign', async () => {
     const f1 = createMockFrontmatterProvider({ title: 'A' })
     const f2 = createMockFrontmatterProvider({ author: 'B' })
-    const merged = mergeCapabilities([
-      makeCaps({ frontmatter: f1 }),
-      makeCaps({ frontmatter: f2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ frontmatter: f1 }), makeCaps({ frontmatter: f2 })],
+      fallbackFileAccess,
+    )
     const fm = await merged.frontmatter?.getFrontmatter('x.md')
     expect(fm).toEqual({ title: 'A', author: 'B' })
   })
@@ -423,10 +446,10 @@ describe('mergeCapabilities – frontmatter', () => {
   it('delegates setFrontmatter to the first provider', async () => {
     const f1 = createMockFrontmatterProvider()
     const f2 = createMockFrontmatterProvider()
-    const merged = mergeCapabilities([
-      makeCaps({ frontmatter: f1 }),
-      makeCaps({ frontmatter: f2 }),
-    ])
+    const merged = mergeCapabilities(
+      [makeCaps({ frontmatter: f1 }), makeCaps({ frontmatter: f2 })],
+      fallbackFileAccess,
+    )
     await merged.frontmatter?.setFrontmatter('x.md', 'key', 'val')
     expect(f1.setFrontmatter).toHaveBeenCalledWith('x.md', 'key', 'val')
     expect(f2.setFrontmatter).not.toHaveBeenCalled()
@@ -442,10 +465,13 @@ describe('mergeCapabilities – onDiagnosticsChanged', () => {
     const handler2 = (cb: OnDiagnosticsChangedCallback) => {
       registered.push(cb)
     }
-    const merged = mergeCapabilities([
-      makeCaps({ onDiagnosticsChanged: handler1 }),
-      makeCaps({ onDiagnosticsChanged: handler2 }),
-    ])
+    const merged = mergeCapabilities(
+      [
+        makeCaps({ onDiagnosticsChanged: handler1 }),
+        makeCaps({ onDiagnosticsChanged: handler2 }),
+      ],
+      fallbackFileAccess,
+    )
 
     const myCallback: OnDiagnosticsChangedCallback = () => {}
     merged.onDiagnosticsChanged?.(myCallback)
@@ -457,34 +483,10 @@ describe('mergeCapabilities – onDiagnosticsChanged', () => {
   })
 
   it('returns undefined when no caps provide onDiagnosticsChanged', () => {
-    const merged = mergeCapabilities([makeCaps(), makeCaps()])
+    const merged = mergeCapabilities(
+      [makeCaps(), makeCaps()],
+      fallbackFileAccess,
+    )
     expect(merged.onDiagnosticsChanged).toBeUndefined()
-  })
-})
-
-describe('installMcpLspDriver – array of capabilities', () => {
-  it('accepts an array and merges before registration', () => {
-    const server = createMockServer()
-    const caps1 = makeCaps({
-      definition: createMockDefinitionProvider(),
-    })
-    const caps2 = makeCaps({
-      diagnostics: createMockDiagnosticsProvider(),
-    })
-
-    const { success } = installMcpLspDriver({
-      server,
-      capabilities: [caps1, caps2],
-    })
-    expect(success).toBeTruthy()
-  })
-
-  it('backward-compatible: single IdeCapabilities still works', () => {
-    const server = createMockServer()
-    const { success } = installMcpLspDriver({
-      server,
-      capabilities: makeCaps(),
-    })
-    expect(success).toBeTruthy()
   })
 })
