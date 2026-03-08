@@ -65,6 +65,7 @@ export function createMockDefinitionProvider(
 ): DefinitionProvider {
   return {
     provideDefinition: vi.fn(async () => results),
+    provideTypeDefinition: vi.fn(async () => results),
   }
 }
 

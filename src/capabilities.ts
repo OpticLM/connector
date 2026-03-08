@@ -40,6 +40,18 @@ export interface DefinitionProvider {
     uri: UnifiedUri,
     position: ExactPosition,
   ): Promise<CodeSnippet[]>
+
+  /**
+   * Returns the type definition location for the symbol at the given position.
+   *
+   * @param uri - The URI of the file
+   * @param position - The exact position to find the type definition for
+   * @returns Array of code snippets representing type definition locations
+   */
+  provideTypeDefinition?(
+    uri: UnifiedUri,
+    position: ExactPosition,
+  ): Promise<CodeSnippet[]>
 }
 
 /**

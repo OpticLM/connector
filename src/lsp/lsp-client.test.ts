@@ -207,6 +207,59 @@ describe('LspClient', () => {
     })
   })
 
+  describe('type definition provider', () => {
+    it('sends textDocument/typeDefinition and converts result', async () => {
+      mockServer = await setupMockServer(undefined, {
+        readFile: async (p) => {
+          if (p === 'src/target.ts') return 'export interface MyType {}\n'
+          return ''
+        },
+      })
+      const { conn, client } = mockServer
+      const fileUri = `file:///${WORKSPACE.replace(/\\/g, '/')}/src/target.ts`
+
+      conn.onRequest('textDocument/typeDefinition', () => ({
+        uri: fileUri,
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 26 },
+        },
+      }))
+
+      // Swallow didOpen notifications
+      conn.onNotification('textDocument/didOpen', () => {})
+
+      const result = await client.definition!.provideTypeDefinition!(
+        'src/main.ts',
+        {
+          line: 5,
+          character: 10,
+        },
+      )
+
+      expect(result).toHaveLength(1)
+      expect(result![0].uri).toBe('src/target.ts')
+      expect(result![0].content).toBe('export interface MyType {}')
+    })
+
+    it('handles null result', async () => {
+      mockServer = await setupMockServer()
+      const { conn, client } = mockServer
+
+      conn.onRequest('textDocument/typeDefinition', () => null)
+      conn.onNotification('textDocument/didOpen', () => {})
+
+      const result = await client.definition!.provideTypeDefinition!(
+        'src/main.ts',
+        {
+          line: 0,
+          character: 0,
+        },
+      )
+      expect(result).toEqual([])
+    })
+  })
+
   describe('references provider', () => {
     it('sends textDocument/references and converts result', async () => {
       mockServer = await setupMockServer(undefined, {

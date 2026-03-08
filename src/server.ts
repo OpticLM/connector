@@ -141,6 +141,10 @@ function registerTools(
     registerGotoDefinitionTool(server, capabilities, resolver)
   }
 
+  if (capabilities.definition?.provideTypeDefinition) {
+    registerGotoTypeDefinitionTool(server, capabilities, resolver)
+  }
+
   if (capabilities.references) {
     registerFindReferencesTool(server, capabilities, resolver)
   }
@@ -237,6 +241,68 @@ function registerGotoDefinitionTool(
           endLine: snippet.range.end.line + 1,
           content: snippet.content,
         }))
+
+        return makeToolResult({ snippets })
+      } catch (error) {
+        const message =
+          error instanceof SymbolResolutionError
+            ? error.message
+            : `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          content: [{ type: 'text' as const, text: message }],
+          structuredContent: { error: message },
+          isError: true,
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers the goto_type_definition tool.
+ */
+function registerGotoTypeDefinitionTool(
+  server: McpServer,
+  capabilities: IdeCapabilities,
+  resolver: SymbolResolver,
+): void {
+  const typeDefinitionProvider = capabilities.definition?.provideTypeDefinition
+  if (!typeDefinitionProvider) return
+
+  server.registerTool(
+    'goto_type_definition',
+    {
+      description: 'Navigate to the type definition of a symbol.',
+      inputSchema: FuzzyPositionSchema,
+      outputSchema: {
+        snippets: z.array(
+          z.object({
+            uri: z.string(),
+            startLine: z.number(),
+            endLine: z.number(),
+            content: z.string(),
+          }),
+        ),
+      },
+    },
+    async (params) => {
+      try {
+        const uri = normalizeUri(params.uri)
+        const fuzzy: FuzzyPosition = {
+          symbolName: params.symbol_name,
+          lineHint: params.line_hint,
+          orderHint: params.order_hint,
+        }
+
+        const exactPosition = await resolver.resolvePosition(uri, fuzzy)
+        const snippets = (await typeDefinitionProvider(uri, exactPosition)).map(
+          (snippet) => ({
+            uri: snippet.uri,
+            startLine: snippet.range.start.line + 1,
+            endLine: snippet.range.end.line + 1,
+            content: snippet.content,
+          }),
+        )
 
         return makeToolResult({ snippets })
       } catch (error) {

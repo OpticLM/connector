@@ -296,6 +296,8 @@ export class LspClient {
       ;(this as { definition: DefinitionProvider | undefined }).definition = {
         provideDefinition: (uri, position) =>
           this.provideDefinition(uri, position),
+        provideTypeDefinition: (uri, position) =>
+          this.provideTypeDefinition(uri, position),
       }
     }
 
@@ -442,6 +444,25 @@ export class LspClient {
     await this.ensureDocumentOpen(lspUri)
 
     const result = await this.sendRequest('textDocument/definition', {
+      textDocument: { uri: lspUri },
+      position: { line: position.line, character: position.character },
+    })
+
+    return convertLocationsToSnippets(
+      this.options.workspacePath,
+      result as Location | Location[] | LocationLink[] | null,
+      this.options.readFile,
+    )
+  }
+
+  private async provideTypeDefinition(
+    uri: UnifiedUri,
+    position: ExactPosition,
+  ): Promise<CodeSnippet[]> {
+    const lspUri = pathToLspUri(this.options.workspacePath, uri)
+    await this.ensureDocumentOpen(lspUri)
+
+    const result = await this.sendRequest('textDocument/typeDefinition', {
       textDocument: { uri: lspUri },
       position: { line: position.line, character: position.character },
     })
