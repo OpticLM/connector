@@ -244,11 +244,11 @@ No subscription support for this resource (read-only).
 
 ### `files://{path}`
 
-For directories: returns directory children (git-ignored files excluded, similar to `ls`). For files: gets file content with optional line range.
+For directories: returns directory children (git-ignored files excluded, similar to `ls`). For files: gets file content with optional line range and regex filtering.
 
 **Resource URI Pattern:** `files://{+path}`
 
-**Example:** `files://src`, `files://src/index.ts`, `files://src/index.ts#L1-L2`
+**Example:** `files://src`, `files://src/index.ts`, `files://src/index.ts#L1-L2`, `files://src/index.ts?pattern=^import`, `files://src/index.ts?pattern=TODO#L10-L50`
 
 No subscription support for this resource (read-only).
 

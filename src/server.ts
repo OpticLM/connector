@@ -57,6 +57,34 @@ function extractLines(
   return lines.slice(startIdx, endIdx).join('\n')
 }
 
+/**
+ * Filters content to only include lines matching a regex pattern.
+ * @param content - The file content to filter
+ * @param pattern - A regex pattern string
+ * @returns Matching lines joined with newlines
+ */
+function filterByPattern(content: string, pattern: string): string {
+  const regex = new RegExp(pattern)
+  const lines = content.split(/\r?\n/)
+  return lines.filter((line) => regex.test(line)).join('\n')
+}
+
+/**
+ * Parses query parameters from a path string.
+ * @returns The clean path and a map of query parameters
+ */
+function parseQueryParams(path: string): {
+  path: string
+  params: URLSearchParams
+} {
+  const qIndex = path.indexOf('?')
+  if (qIndex === -1) return { path, params: new URLSearchParams() }
+  return {
+    path: path.slice(0, qIndex),
+    params: new URLSearchParams(path.slice(qIndex + 1)),
+  }
+}
+
 import {
   type ResolverConfig,
   SymbolResolutionError,
@@ -754,7 +782,8 @@ function registerFilesystemResource(
     {
       description:
         'Access filesystem resources. For directories: returns children (git-ignored files excluded). ' +
-        'For files: returns file content. Supports line ranges with #L23 or #L23-L30 fragment.',
+        'For files: returns file content. Supports line ranges with #L23 or #L23-L30 fragment. ' +
+        'Supports regex filtering with ?pattern=<regex> query parameter.',
     },
     async (uri, variables) => {
       const uriString = uri.toString()
@@ -763,6 +792,8 @@ function registerFilesystemResource(
         const pathWithFragment = variables.path as string
 
         // Parse fragment for line range (e.g., #L23 or #L23-L30)
+        // and query params (e.g., ?pattern=regex)
+        // Supports both ?pattern=x#L1-L2 and #L1-L2?pattern=x orderings
         let fragment: string | undefined
         let path = pathWithFragment
         const hashIndex = pathWithFragment.indexOf('#')
@@ -771,17 +802,34 @@ function registerFilesystemResource(
           path = pathWithFragment.slice(0, hashIndex)
         }
 
-        const normalizedPath = normalizeUri(path)
+        // Query params may appear in the path portion or the fragment portion
+        const { path: pathNoQuery, params: pathParams } = parseQueryParams(path)
+        const { path: fragmentNoQuery, params: fragmentParams } =
+          parseQueryParams(fragment ?? '')
+
+        fragment = fragment ? fragmentNoQuery : undefined
+        const params = new URLSearchParams([
+          ...pathParams.entries(),
+          ...fragmentParams.entries(),
+        ])
+
+        const normalizedPath = normalizeUri(pathNoQuery)
         const lineRange = parseLineRange(fragment)
+        const pattern = params.get('pattern')
 
         // Try reading as a file first
         try {
           const content = await readFile(normalizedPath)
 
           // If we have a line range, extract those lines
-          const resultContent = lineRange
+          let resultContent = lineRange
             ? extractLines(content, lineRange)
             : content
+
+          // If we have a pattern, filter matching lines
+          if (pattern) {
+            resultContent = filterByPattern(resultContent, pattern)
+          }
 
           return {
             contents: [

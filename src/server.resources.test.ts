@@ -299,6 +299,79 @@ describe('resource integration', () => {
     })
   })
 
+  it('should filter file content by regex pattern', async () => {
+    const server = createMockServer()
+    const fileContent =
+      'import { foo } from "bar"\nconst x = 1\nimport { baz } from "qux"\nexport default x'
+    const capabilities: IdeCapabilities = {
+      fileAccess: createMockFileAccess({
+        'src/test.ts': fileContent,
+      }),
+    }
+
+    const { success } = installMcpLspDriver({ server, capabilities })
+    expect(success).toBeTruthy()
+
+    const client = await createAndConnectMockClient(server)
+    const r = await client.readResource({
+      uri: 'files://src/test.ts?pattern=^import',
+    })
+    expect(r.contents).toHaveLength(1)
+    expect(r.contents[0]).toStrictEqual({
+      mimeType: 'text/plain',
+      text: 'import { foo } from "bar"\nimport { baz } from "qux"',
+      uri: 'files://src/test.ts?pattern=^import',
+    })
+  })
+
+  it('should combine line range with regex pattern', async () => {
+    const server = createMockServer()
+    const fileContent = 'line1\nline2 match\nline3\nline4 match\nline5'
+    const capabilities: IdeCapabilities = {
+      fileAccess: createMockFileAccess({
+        'src/test.ts': fileContent,
+      }),
+    }
+
+    const { success } = installMcpLspDriver({ server, capabilities })
+    expect(success).toBeTruthy()
+
+    const client = await createAndConnectMockClient(server)
+    const r = await client.readResource({
+      uri: 'files://src/test.ts?pattern=match#L2-L4',
+    })
+    expect(r.contents).toHaveLength(1)
+    expect(r.contents[0]).toStrictEqual({
+      mimeType: 'text/plain',
+      text: 'line2 match\nline4 match',
+      uri: 'files://src/test.ts?pattern=match#L2-L4',
+    })
+  })
+
+  it('should support fragment-before-query ordering (#L2-L4?pattern=match)', async () => {
+    const server = createMockServer()
+    const fileContent = 'line1\nline2 match\nline3\nline4 match\nline5'
+    const capabilities: IdeCapabilities = {
+      fileAccess: createMockFileAccess({
+        'src/test.ts': fileContent,
+      }),
+    }
+
+    const { success } = installMcpLspDriver({ server, capabilities })
+    expect(success).toBeTruthy()
+
+    const client = await createAndConnectMockClient(server)
+    const r = await client.readResource({
+      uri: 'files://src/test.ts#L2-L4?pattern=match',
+    })
+    expect(r.contents).toHaveLength(1)
+    expect(r.contents[0]).toStrictEqual({
+      mimeType: 'text/plain',
+      text: 'line2 match\nline4 match',
+      uri: 'files://src/test.ts#L2-L4?pattern=match',
+    })
+  })
+
   it('should fallback to readDirectory when file read fails on files://', async () => {
     const server = createMockServer()
     const capabilities: IdeCapabilities = {
