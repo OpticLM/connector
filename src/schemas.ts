@@ -74,14 +74,6 @@ export const GlobalFindSchema = z.object({
   regex_mode,
 })
 
-export const GlobalReplaceSchema = z.object({
-  query,
-  case_sensitive,
-  exact_match,
-  regex_mode,
-  replace_with: z.string().describe('The replacement text'),
-})
-
 export const AddLinkSchema = z.object({
   path: z.string().describe('The path to the document to modify'),
   pattern: z

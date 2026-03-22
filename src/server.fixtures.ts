@@ -108,7 +108,6 @@ export function createMockEditProvider(approved = true): EditProvider {
 
 export function createMockGlobalFindProvider(
   matches: GlobalFindMatch[] = [],
-  count = 0,
 ): GlobalFindProvider {
   return {
     globalFind: vi.fn(
@@ -116,13 +115,6 @@ export function createMockGlobalFindProvider(
         _query: string,
         _options: GlobalFindOptions,
       ): Promise<GlobalFindMatch[]> => matches,
-    ),
-    globalReplace: vi.fn(
-      async (
-        _query: string,
-        _replaceWith: string,
-        _options: GlobalFindOptions,
-      ): Promise<number> => count,
     ),
   }
 }

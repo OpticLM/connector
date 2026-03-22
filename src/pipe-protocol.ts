@@ -200,7 +200,7 @@ export const PROVIDER_METHODS: ProviderMethodEntry[] = [
     methods: ['provideDiagnostics', 'getWorkspaceDiagnostics'],
   },
   { providerKey: 'outline', methods: ['provideDocumentSymbols'] },
-  { providerKey: 'globalFind', methods: ['globalFind', 'globalReplace'] },
+  { providerKey: 'globalFind', methods: ['globalFind'] },
   {
     providerKey: 'graph',
     methods: [

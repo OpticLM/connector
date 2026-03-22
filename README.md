@@ -155,21 +155,6 @@ Search for text across the entire workspace.
 - Array of matches with file URI, line, column, matching text, and context
 - Total number of matches found
 
-### `global_replace`
-
-Replace all occurrences of text across the entire workspace.
-
-**Inputs:**
-- `query`: The search query (required)
-- `replace_with`: The replacement text (required)
-- `case_sensitive`: Whether the search is case-sensitive (optional, default: false)
-- `exact_match`: Whether to match exact words only (optional, default: false)
-- `regex_mode`: Whether the query is a regular expression (optional, default: false)
-
-**Returns:**
-- Number of replacements made
-- Success status and message
-
 ### `get_link_structure`
 
 Get all links in the workspace, showing relationships between documents.

@@ -69,7 +69,6 @@ import {
   FuzzyPositionSchema,
   GetFrontmatterStructureSchema,
   GlobalFindSchema,
-  GlobalReplaceSchema,
   SetFrontmatterSchema,
 } from './schemas.js'
 import type {
@@ -159,7 +158,6 @@ function registerTools(
 
   if (capabilities.globalFind) {
     registerGlobalFindTool(server, capabilities)
-    registerGlobalReplaceTool(server, capabilities)
   }
 
   if (capabilities.graph) {
@@ -880,57 +878,6 @@ function registerGlobalFindTool(
         return {
           content: [{ type: 'text' as const, text: message }],
           structuredContent: { error: message },
-          isError: true,
-        }
-      }
-    },
-  )
-}
-
-/**
- * Registers the global_replace tool.
- */
-function registerGlobalReplaceTool(
-  server: McpServer,
-  capabilities: IdeCapabilities,
-): void {
-  const globalFindProvider = capabilities.globalFind
-  if (!globalFindProvider) return
-
-  server.registerTool(
-    'global_replace',
-    {
-      description:
-        'Replace all occurrences of text across the entire workspace.',
-      inputSchema: GlobalReplaceSchema,
-      outputSchema: {
-        success: z.boolean(),
-        count: z.number(),
-        message: z.string().optional(),
-      },
-    },
-    async (params) => {
-      try {
-        const caseSensitive = params.case_sensitive ?? false
-        const exactMatch = params.exact_match ?? false
-        const regexMode = params.regex_mode ?? false
-
-        const count = await globalFindProvider.globalReplace(
-          params.query,
-          params.replace_with,
-          { caseSensitive, exactMatch, regexMode },
-        )
-
-        return makeToolResult({ success: true, count })
-      } catch (error) {
-        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
-        return {
-          content: [{ type: 'text' as const, text: message }],
-          structuredContent: {
-            success: false,
-            replacementCount: 0,
-            message,
-          },
           isError: true,
         }
       }

@@ -168,12 +168,6 @@ function mergeGlobalFind(
       )
       return results.flat()
     },
-    async globalReplace(query, replaceWith, options) {
-      const results = await Promise.all(
-        providers.map((p) => p.globalReplace(query, replaceWith, options)),
-      )
-      return results.reduce((sum, n) => sum + n, 0)
-    },
   }
 }
 

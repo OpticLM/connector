@@ -333,21 +333,6 @@ describe('mergeCapabilities – globalFind', () => {
     })
     expect(result).toHaveLength(2)
   })
-
-  it('sums globalReplace counts', async () => {
-    const g1 = createMockGlobalFindProvider([], 3)
-    const g2 = createMockGlobalFindProvider([], 5)
-    const merged = mergeCapabilities(
-      [makeCaps({ globalFind: g1 }), makeCaps({ globalFind: g2 })],
-      fallbackFileAccess,
-    )
-    const count = await merged.globalFind?.globalReplace('foo', 'bar', {
-      caseSensitive: false,
-      exactMatch: false,
-      regexMode: false,
-    })
-    expect(count).toBe(8)
-  })
 })
 
 describe('mergeCapabilities – graph', () => {

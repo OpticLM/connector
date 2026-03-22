@@ -497,6 +497,5 @@ describe('graph capability', () => {
 function createMockGlobalFindProvider() {
   return {
     globalFind: vi.fn(async () => []),
-    globalReplace: vi.fn(async () => 0),
   }
 }

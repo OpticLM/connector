@@ -90,7 +90,6 @@ describe('Pipe IPC - Handshake', () => {
     expect(conn.availableMethods).toContain('diagnostics.provideDiagnostics')
     expect(conn.availableMethods).toContain('outline.provideDocumentSymbols')
     expect(conn.availableMethods).toContain('globalFind.globalFind')
-    expect(conn.availableMethods).toContain('globalFind.globalReplace')
     expect(conn.availableMethods).toContain('graph.getLinkStructure')
     expect(conn.availableMethods).toContain('graph.resolveOutlinks')
     expect(conn.availableMethods).toContain('graph.resolveBacklinks')
@@ -224,21 +223,6 @@ describe('Pipe IPC - Round-trip', () => {
       regexMode: false,
     })
     expect(result).toStrictEqual(matches)
-  })
-
-  it('globalFind.globalReplace returns count', async () => {
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      globalFind: createMockGlobalFindProvider([], 5),
-    }
-    const { conn } = await setupPipe(capabilities)
-
-    const result = await conn.capabilities.globalFind?.globalReplace(
-      'test',
-      'replacement',
-      { caseSensitive: false, exactMatch: false, regexMode: false },
-    )
-    expect(result).toBe(5)
   })
 
   it('edit.previewAndApplyEdits returns boolean', async () => {
