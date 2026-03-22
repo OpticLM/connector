@@ -41,12 +41,6 @@ export function createMockFileAccess(
       return content
     }),
 
-    getFileTree: vi.fn(async () => [
-      'src/index.ts',
-      'src/utils.ts',
-      'README.md',
-    ]),
-
     readDirectory: vi.fn(async () => ['file1.ts', 'file2.ts', 'subdir']),
   }
 }

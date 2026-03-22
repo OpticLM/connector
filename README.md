@@ -36,8 +36,6 @@ const fileAccess = {
     return await fs.readFile(uri, 'utf-8')
   },
 
-  getFileTree: (uri: string) => yourIDE.workspace.getFileTree(uri),
-
   readDirectory: (uri: string) => yourIDE.workspace.readDirectory(uri)
 }
 
@@ -101,173 +99,6 @@ installMcpLspDriver({ server, capabilities })
 // 6. Connect to transport (you control the server lifecycle)
 const transport = new StdioServerTransport()
 await server.connect(transport)
-```
-
-## API Reference
-
-### Core Interfaces
-
-#### `FileAccessProvider` (Required)
-
-Provides disk access for reading files:
-
-```typescript
-// type UnifiedUri = string
-interface FileAccessProvider {
-  readFile(uri: UnifiedUri): Promise<string>
-  getFileTree(folderPath: UnifiedUri): Promise<string[]>
-  readDirectory(folderPath: UnifiedUri): Promise<string[]>
-}
-```
-
-#### `EditProvider` (Required for edits)
-
-Handles applying changes to files. At least one method must be implemented:
-
-```typescript
-interface EditProvider {
-  // Apply edits directly without user interaction
-  applyEdits?(operation: PendingEditOperation): Promise<boolean>
-  // Preview edits and get user approval before applying
-  previewAndApplyEdits?(operation: PendingEditOperation): Promise<boolean>
-}
-```
-
-If both methods are provided, `previewAndApplyEdits` takes precedence.
-
-### Capability Providers
-
-All capability providers receive `ExactPosition` coordinates (0-based). The SDK handles fuzzy-to-exact conversion before calling these.
-
-#### `DefinitionProvider`
-
-```typescript
-interface DefinitionProvider {
-  provideDefinition(uri: UnifiedUri, position: ExactPosition): Promise<CodeSnippet[]>
-}
-```
-
-#### `ReferencesProvider`
-
-```typescript
-interface ReferencesProvider {
-  provideReferences(uri: UnifiedUri, position: ExactPosition): Promise<CodeSnippet[]>
-}
-```
-
-#### `HierarchyProvider`
-
-```typescript
-interface HierarchyProvider {
-  provideCallHierarchy(
-    uri: UnifiedUri,
-    position: ExactPosition,
-    direction: 'incoming' | 'outgoing'
-  ): Promise<CodeSnippet[]>
-}
-```
-
-#### `DiagnosticsProvider`
-
-```typescript
-interface DiagnosticsProvider {
-  provideDiagnostics(uri: UnifiedUri): Promise<Diagnostic[]>
-  getWorkspaceDiagnostics?(): Promise<Diagnostic[]>  // Optional workspace diagnostics
-}
-```
-
-#### `OutlineProvider`
-
-```typescript
-interface OutlineProvider {
-  provideDocumentSymbols(uri: UnifiedUri): Promise<DocumentSymbol[]>
-}
-```
-
-#### `GlobalFindProvider`
-
-```typescript
-interface GlobalFindProvider {
-  globalFind(query: string, options: GlobalFindOptions): Promise<GlobalFindMatch[]>
-  globalReplace(query: string, replaceWith: string, options: GlobalFindOptions): Promise<number>
-}
-```
-
-Provides global find and replace functionality across the workspace. `GlobalFindOptions` includes:
-- `caseSensitive`: Whether the search is case-sensitive (default: false)
-- `exactMatch`: Whether to match exact words only (default: false)
-- `regexMode`: Whether the query is a regular expression (default: false)
-
-`GlobalFindMatch` includes:
-- `uri`: File URI containing the match
-- `line`: 1-based line number
-- `column`: 1-based column number
-- `matchText`: The matching text
-- `context`: Context around the match (e.g., the full line)
-
-#### `GraphProvider`
-
-```typescript
-interface GraphProvider {
-  getLinkStructure(): Promise<Link[]>
-  resolveOutlinks(path: UnifiedUri): Promise<Link[]>
-  resolveBacklinks(path: UnifiedUri): Promise<Link[]>
-  addLink(path: UnifiedUri, pattern: string, linkTo: UnifiedUri): Promise<boolean>
-}
-```
-
-Provides graph/link functionality for document relationships (e.g., wiki-style links, cross-references). `Link` includes:
-- `sourceUri`: The source URI where the link originates
-- `targetUri`: The target URI the link points to
-- `subpath`: Optional subpath within the target (e.g., `#section` for Obsidian-style anchors)
-- `displayText`: Optional display text of the link
-- `resolved`: Whether the link target exists
-- `line`: 1-based line number where the link appears
-- `column`: 1-based column number where the link starts
-
-#### `FrontmatterProvider`
-
-```typescript
-interface FrontmatterProvider {
-  getFrontmatterStructure(property: string, path?: UnifiedUri): Promise<FrontmatterMatch[]>
-  getFrontmatter(path: UnifiedUri): Promise<Frontmatter>
-  setFrontmatter(path: UnifiedUri, property: string, value: FrontmatterValue): Promise<boolean>
-}
-```
-
-Provides frontmatter metadata functionality for documents (e.g., YAML frontmatter in Markdown files). Types:
-
-```typescript
-type FrontmatterValue = string | string[] | number | number[] | boolean | boolean[] | Date | undefined
-type Frontmatter = { [key: string]: FrontmatterValue }
-interface FrontmatterMatch {
-  path: UnifiedUri
-  value: FrontmatterValue
-}
-```
-
-- `getFrontmatterStructure`: Searches for a specific property across documents. If `path` is provided, searches only that document.
-- `getFrontmatter`: Gets all frontmatter for a specific document.
-- `setFrontmatter`: Sets a frontmatter property. Use `undefined` to remove the property.
-
-### IdeCapabilities
-
-Combine all providers into a single configuration:
-
-```typescript
-interface IdeCapabilities {
-  fileAccess: FileAccessProvider           // Required
-  edit?: EditProvider                      // Required for apply_edit tool
-  definition?: DefinitionProvider           // Enables goto_definition tool
-  references?: ReferencesProvider           // Enables find_references tool
-  hierarchy?: HierarchyProvider             // Enables call_hierarchy tool
-  diagnostics?: DiagnosticsProvider         // Enables diagnostics resources
-  outline?: OutlineProvider                 // Enables outline resource
-  globalFind?: GlobalFindProvider           // Enables global_find and global_replace tools
-  graph?: GraphProvider                     // Enables graph tools and resources
-  frontmatter?: FrontmatterProvider         // Enables frontmatter tools and resource
-  onDiagnosticsChanged?: (callback: OnDiagnosticsChangedCallback) => void
-}
 ```
 
 ## MCP Tools
@@ -424,18 +255,6 @@ Returns document symbols formatted as a hierarchical markdown outline, including
 
 No subscription support for this resource (read-only).
 
-### `filetree://{path}`
-
-Get the complete file tree for a directory, excluding git-ignored files.
-
-**Resource URI Pattern:** `filetree://{+path}`
-
-**Example:** `filetree://src`, `filetree://.`
-
-Returns a JSON array of all file paths in the directory tree (recursive). Use "." for the root directory.
-
-No subscription support for this resource (read-only).
-
 ### `files://{path}`
 
 For directories: returns directory children (git-ignored files excluded, similar to `ls`). For files: gets file content with optional line range.
@@ -544,7 +363,6 @@ const pipeCaps: PartialIdeCapabilities = {
 
 const fallbackFileAccess = {
   readFile: (uri) => fs.readFile(uri, 'utf-8'),
-  getFileTree: async () => [],
   readDirectory: async () => [],
 }
 
@@ -690,7 +508,6 @@ installMcpLspDriver({
   capabilities: {
     fileAccess: {
       readFile: (uri) => fs.readFile(uri, 'utf-8'),
-      getFileTree: async () => [],
       readDirectory: async () => [],
     },
     // Providers are automatically created based on server capabilities

@@ -299,46 +299,6 @@ describe('resource integration', () => {
     })
   })
 
-  it('should register and access filetree resource', async () => {
-    const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-    }
-
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
-
-    const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({ uri: 'filetree://src' })
-    expect(r.contents).toHaveLength(1)
-    expect(r.contents[0]).toStrictEqual({
-      mimeType: 'application/json',
-      text: '["src/index.ts","src/utils.ts","README.md"]',
-      uri: 'filetree://src',
-    })
-  })
-
-  it('should access filetree resource with nested path', async () => {
-    const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-    }
-
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
-
-    const client = await createAndConnectMockClient(server)
-    const r = await client.readResource({
-      uri: 'filetree://src/components',
-    })
-    expect(r.contents).toHaveLength(1)
-    expect(r.contents[0]).toStrictEqual({
-      mimeType: 'application/json',
-      text: '["src/index.ts","src/utils.ts","README.md"]',
-      uri: 'filetree://src/components',
-    })
-  })
-
   it('should fallback to readDirectory when file read fails on files://', async () => {
     const server = createMockServer()
     const capabilities: IdeCapabilities = {

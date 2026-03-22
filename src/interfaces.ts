@@ -33,14 +33,6 @@ export interface FileAccessProvider {
    * @returns Array of file/folder paths in the directory
    */
   readDirectory(relativePath: UnifiedUri): Promise<string[]>
-
-  /**
-   * Gets the file tree for a directory, excluding git-ignored files.
-   *
-   * @param relativePath - The path to the folder to read
-   * @returns Array of file/folder paths in the directory tree
-   */
-  getFileTree?: (relativePath: UnifiedUri) => Promise<string[]>
 }
 
 // ============================================================================

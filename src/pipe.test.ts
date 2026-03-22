@@ -57,7 +57,6 @@ describe('Pipe IPC - Handshake', () => {
 
     expect(conn.availableMethods).toContain('fileAccess.readFile')
     expect(conn.availableMethods).toContain('fileAccess.readDirectory')
-    expect(conn.availableMethods).toContain('fileAccess.getFileTree')
     expect(
       conn.availableMethods.filter((m) => !m.startsWith('fileAccess.')),
     ).toHaveLength(0)

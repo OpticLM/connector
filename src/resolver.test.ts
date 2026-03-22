@@ -14,8 +14,6 @@ function createMockFileAccess(
       }
       return content
     }),
-
-    getFileTree: vi.fn(async () => []),
   }
 }
 

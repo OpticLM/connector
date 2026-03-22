@@ -4,13 +4,15 @@
       "WebSearch",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
+      "mcp__context7__query-docs",
       "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
       "Bash(pnpm run format:*)",
-      "Bash(pnpm run lint:fix:*)",
+      "Bash(pnpm run lint:*)",
       "Bash(pnpm run build)",
       "Bash(pnpm test:*)",
-      "mcp__context7__query-docs",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Read"
     ]
   }
 }

@@ -744,33 +744,7 @@ function registerFilesystemResource(
   server: McpServer,
   capabilities: IdeCapabilities,
 ): void {
-  const { readFile, readDirectory, getFileTree } = capabilities.fileAccess
-
-  if (getFileTree !== undefined) {
-    const fileTreeTemplate = new ResourceTemplate('filetree://{+path}', {
-      list: undefined,
-    })
-
-    server.registerResource(
-      'filetree',
-      fileTreeTemplate,
-      {
-        description:
-          'Access file tree inside a relative path or use "." for root.',
-      },
-      async (uri, { path }) => ({
-        contents: [
-          {
-            uri: uri.toString(),
-            mimeType: 'application/json',
-            text: JSON.stringify(
-              (await getFileTree(normalizeUri(path as string))) ?? '',
-            ),
-          },
-        ],
-      }),
-    )
-  }
+  const { readFile, readDirectory } = capabilities.fileAccess
 
   const filesystemTemplate = new ResourceTemplate('files://{+path}', {
     list: undefined, // Cannot enumerate all directories
