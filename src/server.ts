@@ -18,6 +18,12 @@ import {
   makeToolResult,
   normalizeUri,
 } from './formatting.js'
+import {
+  computeLineHash,
+  formatAsHashlines,
+  parseHashlineRef,
+  toNumberedLines,
+} from './hashline.js'
 
 /**
  * Parses a line range fragment from a URI (e.g., "#L21" or "#L21-L28").
@@ -38,35 +44,6 @@ function parseLineRange(
   if (start < 1 || end < start) return null
 
   return { start, end }
-}
-
-/**
- * Extracts lines from content based on a line range.
- * @param content - The full file content
- * @param range - 1-based line range { start, end }
- * @returns The extracted lines as a string
- */
-function extractLines(
-  content: string,
-  range: { start: number; end: number },
-): string {
-  const lines = content.split(/\r?\n/)
-  // Convert to 0-based index
-  const startIdx = range.start - 1
-  const endIdx = range.end
-  return lines.slice(startIdx, endIdx).join('\n')
-}
-
-/**
- * Filters content to only include lines matching a regex pattern.
- * @param content - The file content to filter
- * @param pattern - A regex pattern string
- * @returns Matching lines joined with newlines
- */
-function filterByPattern(content: string, pattern: string): string {
-  const regex = new RegExp(pattern)
-  const lines = content.split(/\r?\n/)
-  return lines.filter((line) => regex.test(line)).join('\n')
 }
 
 /**
@@ -181,7 +158,7 @@ function registerTools(
   }
 
   if (capabilities.edit) {
-    registerApplyEditTool(server, capabilities, resolver)
+    registerApplyEditTool(server, capabilities)
   }
 
   if (capabilities.globalFind) {
@@ -681,12 +658,11 @@ function registerOutlineResource(
 }
 
 /**
- * Registers the apply_edit tool.
+ * Registers the apply_edit tool using hashline-based line references.
  */
 function registerApplyEditTool(
   server: McpServer,
   capabilities: IdeCapabilities,
-  resolver: SymbolResolver,
 ): void {
   const editProvider = capabilities.edit
   if (!editProvider) return
@@ -697,14 +673,23 @@ function registerApplyEditTool(
     editProvider.applyEdits?.bind(editProvider)
   if (!applyEditsFn) return
 
+  const { readFile } = capabilities.fileAccess
+
   server.registerTool(
     'apply_edit',
     {
       description:
-        'Apply a text edit to a file. The edit must be approved by the user before being applied.',
+        'Apply a text edit to a file. WORKFLOW: First read the file via the files:// resource to get ' +
+        'hashline-formatted content (e.g., "3:a1|  return x"). Then reference lines by their "line:hash" ' +
+        'to specify the edit range. The hash verifies the file has not changed since your read — if it has, ' +
+        'the edit is rejected and you must re-read the file. ' +
+        'For single-line edits, only start_hash is needed. For multi-line edits, provide both start_hash and end_hash. ' +
+        'The edit replaces the entire line range (inclusive) with replace_text. ' +
+        'The edit must be approved by the user before being applied.',
       inputSchema: {
         uri: ApplyEditSchema.shape.uri,
-        search_text: ApplyEditSchema.shape.search_text,
+        start_hash: ApplyEditSchema.shape.start_hash,
+        end_hash: ApplyEditSchema.shape.end_hash,
         replace_text: ApplyEditSchema.shape.replace_text,
         description: ApplyEditSchema.shape.description,
       },
@@ -717,8 +702,53 @@ function registerApplyEditTool(
       try {
         const uri = normalizeUri(params.uri)
 
-        // Validate that the search text exists and is unique
-        const range = await resolver.findExactText(uri, params.search_text)
+        // Parse hashline references
+        const startRef = parseHashlineRef(params.start_hash)
+        const endRef = params.end_hash
+          ? parseHashlineRef(params.end_hash)
+          : startRef
+
+        // Read file and verify hashes
+        const content = await readFile(uri)
+        const allLines = content.split(/\r?\n/)
+
+        // Validate line numbers are in range (1-based)
+        if (startRef.line < 1 || startRef.line > allLines.length) {
+          throw new Error(
+            `Start line ${startRef.line} is out of range (file has ${allLines.length} lines)`,
+          )
+        }
+        if (endRef.line < startRef.line || endRef.line > allLines.length) {
+          throw new Error(
+            `End line ${endRef.line} is out of range (file has ${allLines.length} lines)`,
+          )
+        }
+
+        // Verify hashes match current content
+        const startLineText = allLines[startRef.line - 1] as string
+        const startActualHash = computeLineHash(startLineText)
+        if (startActualHash !== startRef.hash) {
+          throw new Error(
+            `Hash mismatch at line ${startRef.line}: expected "${startRef.hash}", got "${startActualHash}". File has changed since last read.`,
+          )
+        }
+
+        const endLineText = allLines[endRef.line - 1] as string
+        const endActualHash = computeLineHash(endLineText)
+        if (endActualHash !== endRef.hash) {
+          throw new Error(
+            `Hash mismatch at line ${endRef.line}: expected "${endRef.hash}", got "${endActualHash}". File has changed since last read.`,
+          )
+        }
+
+        // Build DiskRange (convert 1-based to 0-based)
+        const range = {
+          start: { line: startRef.line - 1, character: 0 },
+          end: {
+            line: endRef.line - 1,
+            character: endLineText.length,
+          },
+        }
 
         // Create pending edit operation
         const operation: PendingEditOperation = {
@@ -781,9 +811,14 @@ function registerFilesystemResource(
     filesystemTemplate,
     {
       description:
-        'Access filesystem resources. For directories: returns children (git-ignored files excluded). ' +
-        'For files: returns file content. Supports line ranges with #L23 or #L23-L30 fragment. ' +
-        'Supports regex filtering with ?pattern=<regex> query parameter.',
+        'Access filesystem resources. For directories: returns children as JSON (git-ignored files excluded). ' +
+        'For files: returns content in hashline format where each line is prefixed with ' +
+        '"<lineNumber>:<hash>|" (e.g., "1:a3|function hello() {"). ' +
+        'The hash is a 2-char hex CRC16 digest of the line content. ' +
+        'Use these line:hash references with the apply_edit tool to make edits. ' +
+        'Supports line ranges with #L23 or #L23-L30 fragment. ' +
+        'Supports regex filtering with ?pattern=<regex> query parameter (matches raw line text, not the hash prefix). ' +
+        'Line numbers in the output are always the original file line numbers, even when filtering.',
     },
     async (uri, variables) => {
       const uriString = uri.toString()
@@ -821,14 +856,22 @@ function registerFilesystemResource(
         try {
           const content = await readFile(normalizedPath)
 
-          // If we have a line range, extract those lines
-          let resultContent = lineRange
-            ? extractLines(content, lineRange)
-            : content
+          // Build numbered-line pipeline
+          let lines = toNumberedLines(content)
 
-          // If we have a pattern, filter matching lines
+          // If we have a line range, filter to those lines
+          if (lineRange) {
+            lines = lines.filter(
+              (l) =>
+                l.num >= (lineRange as { start: number; end: number }).start &&
+                l.num <= (lineRange as { start: number; end: number }).end,
+            )
+          }
+
+          // If we have a pattern, filter matching lines (on raw text)
           if (pattern) {
-            resultContent = filterByPattern(resultContent, pattern)
+            const regex = new RegExp(pattern)
+            lines = lines.filter((l) => regex.test(l.text))
           }
 
           return {
@@ -836,7 +879,7 @@ function registerFilesystemResource(
               {
                 uri: uriString,
                 mimeType: 'text/plain',
-                text: resultContent,
+                text: formatAsHashlines(lines),
               },
             ],
           }

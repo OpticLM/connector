@@ -269,8 +269,8 @@ describe('tool registration', () => {
       name: 'apply_edit',
       arguments: {
         uri: 'test.ts',
-        search_text: 'const foo = 1;',
-        replace_text: 'const foo = 100;',
+        start_hash: '1:4e',
+        replace_text: 'const foo = 100; const bar = 2;',
         description: 'Update foo value',
       },
     })
@@ -297,8 +297,8 @@ describe('tool registration', () => {
       name: 'apply_edit',
       arguments: {
         uri: 'test.ts',
-        search_text: 'const foo = 1;',
-        replace_text: 'const foo = 100;',
+        start_hash: '1:4e',
+        replace_text: 'const foo = 100; const bar = 2;',
         description: 'Update foo value',
       },
     })
@@ -348,7 +348,7 @@ describe('tool registration', () => {
     expect(r.structuredContent).toMatchObject({ error: expect.any(String) })
   })
 
-  it('should return error when apply_edit search_text is not found', async () => {
+  it('should return error when apply_edit hash does not match (stale read)', async () => {
     const server = createMockServer()
     const edit = createMockEditProvider(true)
     const files = { 'test.ts': 'const foo = 1;' }
@@ -363,7 +363,7 @@ describe('tool registration', () => {
       name: 'apply_edit',
       arguments: {
         uri: 'test.ts',
-        search_text: 'nonexistent text',
+        start_hash: '1:00',
         replace_text: 'replacement',
         description: 'Test edit',
       },

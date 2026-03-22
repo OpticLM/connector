@@ -246,7 +246,7 @@ describe('resource integration', () => {
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
-      text: fileContent,
+      text: '1:99|line1\n2:fa|line2\n3:db|line3\n4:3c|line4\n5:1d|line5',
       uri: 'files://src/test.ts',
     })
   })
@@ -270,7 +270,7 @@ describe('resource integration', () => {
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
-      text: 'line3',
+      text: '3:db|line3',
       uri: 'files://src/test.ts#L3',
     })
   })
@@ -294,7 +294,7 @@ describe('resource integration', () => {
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
-      text: 'line2\nline3\nline4',
+      text: '2:fa|line2\n3:db|line3\n4:3c|line4',
       uri: 'files://src/test.ts#L2-L4',
     })
   })
@@ -319,7 +319,7 @@ describe('resource integration', () => {
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
-      text: 'import { foo } from "bar"\nimport { baz } from "qux"',
+      text: '1:0b|import { foo } from "bar"\n3:d7|import { baz } from "qux"',
       uri: 'files://src/test.ts?pattern=^import',
     })
   })
@@ -343,7 +343,7 @@ describe('resource integration', () => {
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
-      text: 'line2 match\nline4 match',
+      text: '2:9d|line2 match\n4:b8|line4 match',
       uri: 'files://src/test.ts?pattern=match#L2-L4',
     })
   })
@@ -367,7 +367,7 @@ describe('resource integration', () => {
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toStrictEqual({
       mimeType: 'text/plain',
-      text: 'line2 match\nline4 match',
+      text: '2:9d|line2 match\n4:b8|line4 match',
       uri: 'files://src/test.ts#L2-L4?pattern=match',
     })
   })

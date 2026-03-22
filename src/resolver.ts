@@ -6,12 +6,7 @@
  */
 
 import type { FileAccessProvider } from './interfaces.js'
-import type {
-  DiskRange,
-  ExactPosition,
-  FuzzyPosition,
-  UnifiedUri,
-} from './types.js'
+import type { ExactPosition, FuzzyPosition, UnifiedUri } from './types.js'
 
 /**
  * Configuration options for the SymbolResolver.
@@ -167,77 +162,5 @@ export class SymbolResolver {
     }
 
     return null
-  }
-
-  /**
-   * Finds exact text in a file and returns its range.
-   * Used for search-and-replace operations.
-   *
-   * @param uri - The URI of the file
-   * @param searchText - The exact text to find
-   * @returns The range of the found text
-   * @throws Error if the text is not found or appears multiple times
-   */
-  async findExactText(uri: UnifiedUri, searchText: string): Promise<DiskRange> {
-    const content = await this.fs.readFile(uri)
-
-    // Find all occurrences
-    const occurrences: number[] = []
-    let searchIndex = 0
-    while (searchIndex < content.length) {
-      const foundIndex = content.indexOf(searchText, searchIndex)
-      if (foundIndex === -1) {
-        break
-      }
-      occurrences.push(foundIndex)
-      searchIndex = foundIndex + 1
-    }
-
-    if (occurrences.length === 0) {
-      throw new Error(
-        `Text not found in file: "${searchText.slice(0, 50)}${searchText.length > 50 ? '...' : ''}"`,
-      )
-    }
-
-    if (occurrences.length > 1) {
-      throw new Error(
-        `Text appears ${occurrences.length} times in file. Please provide more context to uniquely identify the location.`,
-      )
-    }
-
-    // Convert character offset to line/character position
-    const startOffset = occurrences[0] as number
-    const endOffset = startOffset + searchText.length
-
-    const start = this.offsetToPosition(content, startOffset)
-    const end = this.offsetToPosition(content, endOffset)
-
-    return { start, end }
-  }
-
-  /**
-   * Converts a character offset to a line/character position.
-   */
-  private offsetToPosition(content: string, offset: number): ExactPosition {
-    let line = 0
-    let character = 0
-    let currentOffset = 0
-
-    for (const char of content) {
-      if (currentOffset === offset) {
-        break
-      }
-
-      if (char === '\n') {
-        line++
-        character = 0
-      } else {
-        character++
-      }
-
-      currentOffset++
-    }
-
-    return { line, character }
   }
 }

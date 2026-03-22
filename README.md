@@ -133,11 +133,14 @@ Get call hierarchy for a function or method.
 
 ### `apply_edit`
 
-Apply a text edit to a file (requires user approval).
+Apply a text edit to a file using hashline references (requires user approval).
+
+The `files://` resource returns file content in **hashline format** — each line is prefixed with `<line>:<hash>|`, where the hash is a 2-char CRC16 digest of the line's content. To edit a file, reference lines by these hashes. If the file has changed since the last read, the hashes won't match and the edit is rejected, preventing stale overwrites.
 
 **Inputs:**
 - `uri`: File path or URI
-- `search_text`: Exact text to replace (must be unique in file)
+- `start_hash`: Line reference with hash from file read (e.g., `"3:a1"`)
+- `end_hash`: End line reference for multi-line edits (e.g., `"5:0e"`). Defaults to `start_hash` for single-line edits
 - `replace_text`: New text to insert
 - `description`: Rationale for the edit
 
@@ -244,7 +247,17 @@ No subscription support for this resource (read-only).
 
 ### `files://{path}`
 
-For directories: returns directory children (git-ignored files excluded, similar to `ls`). For files: gets file content with optional line range and regex filtering.
+For directories: returns directory children (git-ignored files excluded, similar to `ls`). For files: returns content in **hashline format** with optional line range and regex filtering.
+
+**Hashline format:** Each line is prefixed with `<line>:<hash>|`, where `<line>` is the 1-based line number and `<hash>` is a 2-char CRC16 hex digest of the line content. For example:
+
+```
+1:a3|function hello() {
+2:f1|  return "world"
+3:0e|}
+```
+
+These hashes serve as content-addressed anchors for the `apply_edit` tool — if the file changes between read and edit, the hash mismatch is detected and the edit is safely rejected.
 
 **Resource URI Pattern:** `files://{+path}`
 
