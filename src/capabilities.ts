@@ -109,6 +109,15 @@ export interface DiagnosticsProvider {
    * @returns Array of diagnostics for all files in the workspace
    */
   getWorkspaceDiagnostics?(): Promise<Diagnostic[]>
+
+  /**
+   * Called by the driver to register a callback for diagnostics changes.
+   * When provided, the diagnostics resources become subscribable.
+   * The plugin should call the registered callback whenever diagnostics change for a URI.
+   *
+   * @param callback - The callback to invoke when diagnostics change
+   */
+  onDiagnosticsChanged?(callback: (uri: UnifiedUri) => void): void
 }
 
 /**
@@ -308,15 +317,6 @@ export interface IdeCapabilities {
 
   /** Optional: Provides frontmatter functionality for document metadata */
   frontmatter?: FrontmatterProvider
-
-  /**
-   * Optional: Called by the driver to register a callback for diagnostics changes.
-   * When this is provided, the diagnostics resources become subscribable.
-   * The plugin should call the registered callback whenever diagnostics change for a URI.
-   *
-   * @param callback - The callback to invoke when diagnostics change
-   */
-  onDiagnosticsChanged?: (callback: OnDiagnosticsChangedCallback) => void
 }
 
 /**

@@ -84,13 +84,15 @@ const capabilities: IdeCapabilities = {
   fileAccess,
   edit,
   definition,
-  diagnostics,
+  diagnostics: {
+    ...diagnostics,
+    onDiagnosticsChanged: (callback) => {
+      // Register for diagnostic changes
+      yourIDE.onDiagnosticsChanged((uri) => callback(uri))
+    },
+  },
   outline,
   filesystem,
-  onDiagnosticsChanged: (callback) => {
-    // Register for diagnostic changes
-    yourIDE.onDiagnosticsChanged((uri) => callback(uri))
-  },
   // Add more capabilities as needed
 }
 
@@ -226,7 +228,7 @@ Get diagnostics (errors, warnings) for a specific file.
 
 Returns diagnostics formatted as markdown with location, severity, and message information.
 
-**Subscription Support:** If your IDE implements `onDiagnosticsChanged` capability, these resources become subscribable. When diagnostics change, the driver sends resource update notifications.
+**Subscription Support:** If your `DiagnosticsProvider` implements `onDiagnosticsChanged`, these resources become subscribable. When diagnostics change, the driver sends resource update notifications.
 
 ### `diagnostics://workspace`
 
@@ -238,7 +240,7 @@ Only available if your `DiagnosticsProvider` implements the optional `getWorkspa
 
 Returns workspace diagnostics grouped by file, formatted as markdown.
 
-**Subscription Support:** If your IDE implements `onDiagnosticsChanged` capability, this resource becomes subscribable.
+**Subscription Support:** If your `DiagnosticsProvider` implements `onDiagnosticsChanged`, this resource becomes subscribable.
 
 ### `outline://{path}`
 
@@ -303,26 +305,30 @@ No subscription support for this resource (read-only).
 
 ## Subscription and Change Notifications
 
-When your IDE supports the `onDiagnosticsChanged` capability, diagnostic resources become subscribable:
+Providers can implement optional `onDiagnosticsChanged` and `onFileChanged` callbacks to make resources subscribable:
 
 ```typescript
 const capabilities: IdeCapabilities = {
-  fileAccess,
+  fileAccess: {
+    readFile: async (uri) => { /* ... */ },
+    readDirectory: async (path) => { /* ... */ },
+    onFileChanged: (callback) => {
+      // Register your IDE's file change listener
+      yourIDE.onFileChanged((uri) => callback(uri))
+    },
+  },
   diagnostics: {
     provideDiagnostics: async (uri) => { /* ... */ },
-    getWorkspaceDiagnostics: async () => { /* ... */ }
+    getWorkspaceDiagnostics: async () => { /* ... */ },
+    onDiagnosticsChanged: (callback) => {
+      // Register your IDE's diagnostic change listener
+      yourIDE.onDiagnosticsChanged((uri) => callback(uri))
+    },
   },
-  onDiagnosticsChanged: (callback) => {
-    // Register your IDE's diagnostic change listener
-    yourIDE.onDiagnosticsChanged((uri) => {
-      // Call the callback when diagnostics change
-      callback(uri)
-    })
-  }
 }
 ```
 
-When diagnostics change, call the registered callback with the affected file URI. The driver will send MCP resource update notifications to subscribers.
+When diagnostics or files change, call the registered callback with the affected file URI. The driver will send MCP resource update notifications to subscribers.
 
 ## Symbol Resolution
 
@@ -373,7 +379,7 @@ installMcpLspDriver({ server, capabilities: merged })
 
 - **Read providers** (definition, references, hierarchy, diagnostics, outline, globalFind, graph, frontmatter) concat their results via `Promise.all` + `flat`.
 - **Write/mutation providers** (edit, `addLink`, `setFrontmatter`) use the first available ("first wins").
-- **`onDiagnosticsChanged`** registers the callback on every partial that provides it.
+- **`onDiagnosticsChanged`** and **`onFileChanged`** register the callback on every provider that supplies them.
 - **`fileAccess`** uses the first partial that provides it, falling back to the `fallbackFileAccess` argument.
 
 ## Type Definitions
@@ -479,7 +485,7 @@ installMcpLspDriver({ server: mcpServer, capabilities: conn.capabilities })
 conn.disconnect()
 ```
 
-The handshake automatically discovers which providers the server exposes and builds typed proxies. Diagnostics change notifications (`onDiagnosticsChanged`) are forwarded as push notifications to all connected clients. Multiple clients can connect to the same pipe simultaneously.
+The handshake automatically discovers which providers the server exposes and builds typed proxies. Change notifications (`onDiagnosticsChanged`, `onFileChanged`) are forwarded as push notifications to all connected clients. Multiple clients can connect to the same pipe simultaneously.
 
 ## LSP Client (Built-in)
 
@@ -515,8 +521,10 @@ installMcpLspDriver({
     references: lsp.references,
     hierarchy: lsp.hierarchy,
     outline: lsp.outline,
-    diagnostics: lsp.diagnostics,
-    onDiagnosticsChanged: lsp.onDiagnosticsChanged,
+    diagnostics: {
+      ...lsp.diagnostics,
+      onDiagnosticsChanged: lsp.onDiagnosticsChanged,
+    },
   },
 })
 

@@ -1,5 +1,5 @@
 import { connect } from 'node:net'
-import type { IdeCapabilities } from './capabilities.js'
+import type { PartialIdeCapabilities } from './capabilities.js'
 import { PipeTransport, PROVIDER_METHODS, toPipePath } from './pipe-protocol.js'
 
 export interface ConnectLspPipeOptions {
@@ -8,7 +8,7 @@ export interface ConnectLspPipeOptions {
 }
 
 export interface LspPipeConnection {
-  readonly capabilities: IdeCapabilities
+  readonly capabilities: PartialIdeCapabilities
   readonly availableMethods: string[]
   disconnect(): void
 }
@@ -44,11 +44,15 @@ export function connectLspPipe(
       if (settled) return
 
       let diagnosticsCallback: ((uri: string) => void) | undefined
+      let fileChangedCallback: ((uri: string) => void) | undefined
 
       const transport = new PipeTransport(socket, {
         onNotification: (method, params) => {
           if (method === 'onDiagnosticsChanged' && diagnosticsCallback) {
             diagnosticsCallback(params[0] as string)
+          }
+          if (method === 'onFileChanged' && fileChangedCallback) {
+            fileChangedCallback(params[0] as string)
           }
         },
       })
@@ -61,19 +65,8 @@ export function connectLspPipe(
           const handshakeResult = raw as { methods: string[] }
           const availableMethods = handshakeResult.methods
 
-          // Validate required methods
-          if (
-            !availableMethods.includes('fileAccess.readFile') ||
-            !availableMethods.includes('fileAccess.readDirectory')
-          ) {
-            transport.destroy()
-            throw new Error(
-              'Server missing required methods: fileAccess.readFile, fileAccess.readDirectory',
-            )
-          }
-
           // Build proxy capabilities
-          const capabilities = {} as IdeCapabilities
+          const capabilities: PartialIdeCapabilities = {}
 
           for (const { providerKey, methods } of PROVIDER_METHODS) {
             const present = methods.filter((m) =>
@@ -89,15 +82,33 @@ export function connectLspPipe(
               provider[method] = (...args: unknown[]) =>
                 transport.sendRequest(`${providerKey}.${method}`, args)
             }
+
+            // Attach onDiagnosticsChanged to diagnostics provider
+            if (
+              providerKey === 'diagnostics' &&
+              availableMethods.includes('onDiagnosticsChanged')
+            ) {
+              ;(provider as Record<string, unknown>).onDiagnosticsChanged = (
+                callback: (uri: string) => void,
+              ) => {
+                diagnosticsCallback = callback
+              }
+            }
+
+            // Attach onFileChanged to fileAccess provider
+            if (
+              providerKey === 'fileAccess' &&
+              availableMethods.includes('onFileChanged')
+            ) {
+              ;(provider as Record<string, unknown>).onFileChanged = (
+                callback: (uri: string) => void,
+              ) => {
+                fileChangedCallback = callback
+              }
+            }
+
             ;(capabilities as unknown as Record<string, unknown>)[providerKey] =
               provider
-          }
-
-          // Handle onDiagnosticsChanged
-          if (availableMethods.includes('onDiagnosticsChanged')) {
-            capabilities.onDiagnosticsChanged = (callback) => {
-              diagnosticsCallback = callback
-            }
           }
 
           settled = true

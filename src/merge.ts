@@ -13,7 +13,6 @@ import type {
   GraphProvider,
   HierarchyProvider,
   IdeCapabilities,
-  OnDiagnosticsChangedCallback,
   OutlineProvider,
   PartialIdeCapabilities,
   ReferencesProvider,
@@ -27,8 +26,29 @@ import type { EditProvider, FileAccessProvider } from './interfaces.js'
 function mergeFileAccess(
   providers: FileAccessProvider[],
 ): FileAccessProvider | undefined {
-  // First-wins — all read the same filesystem
-  return providers[0]
+  if (providers.length === 0) return undefined
+  if (providers.length === 1) return providers[0]
+
+  // First-wins for read methods
+  const first = providers[0]!
+  const merged: FileAccessProvider = {
+    readFile: first.readFile.bind(first),
+    readDirectory: first.readDirectory.bind(first),
+  }
+
+  // Merge onFileChanged — register callback on every provider that has it
+  const fileChangedHandlers = providers
+    .map((p) => p.onFileChanged)
+    .filter((fn): fn is NonNullable<typeof fn> => fn != null)
+  if (fileChangedHandlers.length > 0) {
+    merged.onFileChanged = (callback) => {
+      for (const handler of fileChangedHandlers) {
+        handler(callback)
+      }
+    }
+  }
+
+  return merged
 }
 
 function mergeEdit(providers: EditProvider[]): EditProvider | undefined {
@@ -103,6 +123,18 @@ function mergeDiagnostics(
     merged.getWorkspaceDiagnostics = async () => {
       const results = await Promise.all(workspaceProviders.map((fn) => fn()))
       return results.flat()
+    }
+  }
+
+  // Merge onDiagnosticsChanged — register callback on every provider that has it
+  const diagnosticsChangedHandlers = providers
+    .map((p) => p.onDiagnosticsChanged)
+    .filter((fn): fn is NonNullable<typeof fn> => fn != null)
+  if (diagnosticsChangedHandlers.length > 0) {
+    merged.onDiagnosticsChanged = (callback) => {
+      for (const handler of diagnosticsChangedHandlers) {
+        handler(callback)
+      }
     }
   }
 
@@ -202,18 +234,6 @@ function mergeFrontmatter(
   }
 }
 
-function mergeOnDiagnosticsChanged(
-  handlers: ((cb: OnDiagnosticsChangedCallback) => void)[],
-): ((callback: OnDiagnosticsChangedCallback) => void) | undefined {
-  if (handlers.length === 0) return undefined
-  if (handlers.length === 1) return handlers[0]
-  return (callback: OnDiagnosticsChangedCallback) => {
-    for (const handler of handlers) {
-      handler(callback)
-    }
-  }
-}
-
 // ============================================================================
 // Public API
 // ============================================================================
@@ -238,7 +258,7 @@ function collect<T, K extends keyof T>(list: T[], key: K): NonNullable<T[K]>[] {
  *
  * - Read providers concat their results via Promise.all + flat.
  * - Write/mutation providers use the first available ("first wins").
- * - onDiagnosticsChanged registers the callback on every capability that provides it.
+ * - Subscription callbacks (onDiagnosticsChanged, onFileChanged) register on every provider that has them.
  *
  * @param capsList - Array of PartialIdeCapabilities to merge
  * @param fallbackFileAccess - FileAccessProvider used when no partial provides fileAccess
@@ -266,8 +286,5 @@ export function mergeCapabilities(
     globalFind: mergeGlobalFind(collect(capsList, 'globalFind')),
     graph: mergeGraph(collect(capsList, 'graph')),
     frontmatter: mergeFrontmatter(collect(capsList, 'frontmatter')),
-    onDiagnosticsChanged: mergeOnDiagnosticsChanged(
-      collect(capsList, 'onDiagnosticsChanged'),
-    ),
   }
 }

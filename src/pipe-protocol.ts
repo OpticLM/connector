@@ -174,7 +174,7 @@ export function toPipePath(pipeName: string): string {
 // Provider Method Registry
 // ============================================================================
 
-type ProviderKeys = Exclude<keyof IdeCapabilities, 'onDiagnosticsChanged'>
+type ProviderKeys = keyof IdeCapabilities
 
 type ProviderMethodEntry = {
   [K in ProviderKeys]: {

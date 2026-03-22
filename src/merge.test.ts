@@ -457,24 +457,27 @@ describe('mergeCapabilities – frontmatter', () => {
 })
 
 describe('mergeCapabilities – onDiagnosticsChanged', () => {
-  it('registers callback on every capability that provides it', () => {
+  it('registers callback on every diagnostics provider that has it', () => {
     const registered: OnDiagnosticsChangedCallback[] = []
-    const handler1 = (cb: OnDiagnosticsChangedCallback) => {
-      registered.push(cb)
+    const diag1: DiagnosticsProvider = {
+      provideDiagnostics: vi.fn(async () => []),
+      onDiagnosticsChanged: (cb) => {
+        registered.push(cb)
+      },
     }
-    const handler2 = (cb: OnDiagnosticsChangedCallback) => {
-      registered.push(cb)
+    const diag2: DiagnosticsProvider = {
+      provideDiagnostics: vi.fn(async () => []),
+      onDiagnosticsChanged: (cb) => {
+        registered.push(cb)
+      },
     }
     const merged = mergeCapabilities(
-      [
-        makeCaps({ onDiagnosticsChanged: handler1 }),
-        makeCaps({ onDiagnosticsChanged: handler2 }),
-      ],
+      [makeCaps({ diagnostics: diag1 }), makeCaps({ diagnostics: diag2 })],
       fallbackFileAccess,
     )
 
     const myCallback: OnDiagnosticsChangedCallback = () => {}
-    merged.onDiagnosticsChanged?.(myCallback)
+    merged.diagnostics?.onDiagnosticsChanged?.(myCallback)
 
     // Both handlers should have received the callback
     expect(registered).toHaveLength(2)
@@ -482,11 +485,11 @@ describe('mergeCapabilities – onDiagnosticsChanged', () => {
     expect(registered[1]).toBe(myCallback)
   })
 
-  it('returns undefined when no caps provide onDiagnosticsChanged', () => {
+  it('returns undefined when no diagnostics providers have onDiagnosticsChanged', () => {
     const merged = mergeCapabilities(
       [makeCaps(), makeCaps()],
       fallbackFileAccess,
     )
-    expect(merged.onDiagnosticsChanged).toBeUndefined()
+    expect(merged.diagnostics?.onDiagnosticsChanged).toBeUndefined()
   })
 })

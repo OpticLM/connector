@@ -41,8 +41,11 @@ export function serveLspPipe(
 
   // Pre-compute handshake response
   const availableMethods = [...registry.keys()]
-  if (capabilities.onDiagnosticsChanged) {
+  if (capabilities.diagnostics?.onDiagnosticsChanged) {
     availableMethods.push('onDiagnosticsChanged')
+  }
+  if (capabilities.fileAccess.onFileChanged) {
+    availableMethods.push('onFileChanged')
   }
 
   const connections = new Set<PipeTransport>()
@@ -65,10 +68,19 @@ export function serveLspPipe(
   })
 
   // Register diagnostics push notifications
-  if (capabilities.onDiagnosticsChanged) {
-    capabilities.onDiagnosticsChanged((uri) => {
+  if (capabilities.diagnostics?.onDiagnosticsChanged) {
+    capabilities.diagnostics.onDiagnosticsChanged((uri) => {
       for (const transport of connections) {
         transport.sendNotification('onDiagnosticsChanged', [uri])
+      }
+    })
+  }
+
+  // Register file change push notifications
+  if (capabilities.fileAccess.onFileChanged) {
+    capabilities.fileAccess.onFileChanged((uri) => {
+      for (const transport of connections) {
+        transport.sendNotification('onFileChanged', [uri])
       }
     })
   }

@@ -217,15 +217,16 @@ describe('McpLspDriver', () => {
 describe('diagnostics subscription', () => {
   it('should register onDiagnosticsChanged callback when provided', () => {
     const server = createMockServer()
-    const diagnosticsProvider = createMockDiagnosticsProvider()
     let registeredCallback: OnDiagnosticsChangedCallback | undefined
+
+    const diagnosticsProvider = createMockDiagnosticsProvider()
+    diagnosticsProvider.onDiagnosticsChanged = (callback) => {
+      registeredCallback = callback
+    }
 
     const capabilities: IdeCapabilities = {
       fileAccess: createMockFileAccess(),
       diagnostics: diagnosticsProvider,
-      onDiagnosticsChanged: (callback) => {
-        registeredCallback = callback
-      },
     }
 
     const { success } = installMcpLspDriver({ server, capabilities })

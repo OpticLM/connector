@@ -581,8 +581,8 @@ function registerDiagnosticsResources(
   }
 
   // Set up subscription support if onDiagnosticsChanged is provided
-  if (capabilities.onDiagnosticsChanged) {
-    capabilities.onDiagnosticsChanged((uri) => {
+  if (diagnosticsProvider.onDiagnosticsChanged) {
+    diagnosticsProvider.onDiagnosticsChanged((uri) => {
       // Notify MCP clients that the diagnostics resource has been updated
       const normalizedUri = normalizeUri(uri)
       server.server.sendResourceUpdated({
@@ -822,6 +822,16 @@ function registerFilesystemResource(
       }
     },
   )
+
+  // Set up subscription support if onFileChanged is provided
+  if (capabilities.fileAccess.onFileChanged) {
+    capabilities.fileAccess.onFileChanged((uri) => {
+      const normalizedUri = normalizeUri(uri)
+      server.server.sendResourceUpdated({
+        uri: `files://${normalizedUri}`,
+      })
+    })
+  }
 }
 
 /**
