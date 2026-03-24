@@ -2,6 +2,22 @@
 
 A TypeScript SDK that bridges Language Server Protocol (LSP) capabilities with the Model Context Protocol (MCP). Designed for IDE plugin developers building AI-assisted coding tools for VS Code, JetBrains, and other editors.
 
+## Table of Contents
+
+- [Core Philosophy](#core-philosophy)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [MCP Tools](#mcp-tools)
+- [MCP Resources](#mcp-resources)
+- [Auto-Complete for File Paths](#auto-complete-for-file-paths)
+- [Subscription and Change Notifications](#subscription-and-change-notifications)
+- [Symbol Resolution](#symbol-resolution)
+- [Merging Capabilities](#merging-capabilities)
+- [Pipe IPC (Out-of-Process)](#pipe-ipc-out-of-process)
+- [LSP Client (Built-in)](#lsp-client-built-in)
+- [Requirements](#requirements)
+- [License](#license)
+
 ## Core Philosophy
 
 - **Fuzzy-to-Exact Resolution**: LLMs interact via semantic anchors (`symbolName`, `lineHint`), and the SDK resolves them to precise coordinates
@@ -111,25 +127,13 @@ The SDK automatically registers tools based on which capabilities you provide:
 
 Navigate to the definition of a symbol.
 
-**Inputs:**
-- `uri`: File path or URI
-- `symbol_name`: Text of the symbol to find
-- `line_hint`: Approximate line number (1-based)
-- `order_hint`: Which occurrence if symbol appears multiple times (0-based, default: 0)
-
 ### `find_references`
 
 Find all references to a symbol.
 
-**Inputs:** Same as `goto_definition`
-
 ### `call_hierarchy`
 
 Get call hierarchy for a function or method.
-
-**Inputs:**
-- Same as `goto_definition`, plus:
-- `direction`: `'incoming'` (callers) or `'outgoing'` (callees)
 
 ### `apply_edit`
 
@@ -137,70 +141,25 @@ Apply a text edit to a file using hashline references (requires user approval).
 
 The `files://` resource returns file content in **hashline format** — each line is prefixed with `<line>:<hash>|`, where the hash is a 2-char CRC16 digest of the line's content. To edit a file, reference lines by these hashes. If the file has changed since the last read, the hashes won't match and the edit is rejected, preventing stale overwrites.
 
-**Inputs:**
-- `uri`: File path or URI
-- `start_hash`: Line reference with hash from file read (e.g., `"3:a1"`)
-- `end_hash`: End line reference for multi-line edits (e.g., `"5:0e"`). Defaults to `start_hash` for single-line edits
-- `replace_text`: New text to insert
-- `description`: Rationale for the edit
-
 ### `global_find`
 
 Search for text across the entire workspace.
-
-**Inputs:**
-- `query`: The search query (required)
-- `case_sensitive`: Whether the search is case-sensitive (optional, default: false)
-- `exact_match`: Whether to match exact words only (optional, default: false)
-- `regex_mode`: Whether the query is a regular expression (optional, default: false)
-
-**Returns:**
-- Array of matches with file URI, line, column, matching text, and context
-- Total number of matches found
 
 ### `get_link_structure`
 
 Get all links in the workspace, showing relationships between documents.
 
-**Inputs:** None
-
-**Returns:**
-- Array of links with source URI, target URI, subpath, display text, resolved status, line, and column
-
 ### `add_link`
 
 Add a link to a document by finding a text pattern and replacing it with a link.
-
-**Inputs:**
-- `path`: The path to the document to modify
-- `pattern`: The text pattern to find and replace with a link
-- `link_to`: The target URI the link should point to
-
-**Returns:**
-- Success status and message
 
 ### `get_frontmatter_structure`
 
 Get frontmatter property values across documents.
 
-**Inputs:**
-- `property`: The frontmatter property name to search for (required)
-- `path`: Optional path to limit the search to a specific document
-
-**Returns:**
-- Array of matches with path and value
-
 ### `set_frontmatter`
 
 Set a frontmatter property on a document.
-
-**Inputs:**
-- `path`: The path to the document to modify (required)
-- `property`: The frontmatter property name to set (required)
-- `value`: The value to set. Can be a string, number, boolean, array of these types, or null to remove the property.
-
-**Returns:**
-- Success status and message
 
 ## MCP Resources
 
@@ -301,6 +260,16 @@ Returns a JSON object containing all frontmatter properties and values for the d
 
 No subscription support for this resource (read-only).
 
+## Auto-Complete for File Paths
+
+All resource templates with a `{+path}` variable (`files://`, `diagnostics://`, `outline://`, `outlinks://`, `backlinks://`, `frontmatter://`) support MCP auto-completion. When an MCP client calls `completion/complete` with a partial file path, the SDK uses `readDirectory` from your `FileAccessProvider` to suggest matching entries.
+
+- Completion is case-insensitive and splits input into a directory and prefix (e.g., `src/ser` reads `src/` and filters by `ser`)
+- If `readDirectory` fails (e.g., the directory doesn't exist), an empty list is returned
+- Results are capped at 100 items by the MCP SDK
+
+This works automatically — no additional configuration is needed.
+
 ## Subscription and Change Notifications
 
 Providers can implement optional `onDiagnosticsChanged` and `onFileChanged` callbacks to make resources subscribable:
@@ -379,64 +348,6 @@ installMcpLspDriver({ server, capabilities: merged })
 - **Write/mutation providers** (edit, `addLink`, `setFrontmatter`) use the first available ("first wins").
 - **`onDiagnosticsChanged`** and **`onFileChanged`** register the callback on every provider that supplies them.
 - **`fileAccess`** uses the first partial that provides it, falling back to the `fallbackFileAccess` argument.
-
-## Type Definitions
-
-### Position Types
-
-```typescript
-// 0-based exact coordinates (internal)
-interface ExactPosition {
-  line: number
-  character: number
-}
-
-// Fuzzy position from LLM
-interface FuzzyPosition {
-  symbolName: string
-  lineHint: number      // 1-based
-  orderHint?: number    // 0-based, default: 0
-}
-
-// Range on disk
-interface DiskRange {
-  start: ExactPosition
-  end: ExactPosition
-}
-```
-
-### Result Types
-
-```typescript
-interface CodeSnippet {
-  uri: UnifiedUri
-  range: DiskRange
-  content: string
-}
-
-interface Diagnostic {
-  uri: UnifiedUri
-  range: DiskRange
-  severity: 'error' | 'warning' | 'information' | 'hint'
-  message: string
-  source?: string
-  code?: string | number
-}
-
-interface Link {
-  sourceUri: UnifiedUri
-  targetUri: UnifiedUri
-  subpath?: string
-  displayText?: string
-  resolved: boolean
-  line: number
-  column: number
-}
-
-type EditResult =
-  | { success: true; message: string }
-  | { success: false; message: string; reason: 'UserRejected' | 'IOError' | 'ValidationFailed' }
-```
 
 ## Pipe IPC (Out-of-Process)
 
@@ -570,28 +481,6 @@ lsp.getState()  // 'running'
 
 await lsp.stop()
 lsp.getState()  // 'dead'
-```
-
-## Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build
-pnpm build
-
-# Run tests
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Lint
-pnpm lint
-
-# Format
-pnpm format
 ```
 
 ## Requirements

@@ -24,6 +24,7 @@ import {
   parseHashlineRef,
   toNumberedLines,
 } from './hashline.js'
+import type { FileAccessProvider } from './interfaces.js'
 
 /**
  * Parses a line range fragment from a URI (e.g., "#L21" or "#L21-L28").
@@ -59,6 +60,31 @@ function parseQueryParams(path: string): {
   return {
     path: path.slice(0, qIndex),
     params: new URLSearchParams(path.slice(qIndex + 1)),
+  }
+}
+
+/**
+ * Creates a completion callback for file path auto-complete.
+ * Splits the input into directory + prefix, reads the directory,
+ * and returns entries matching the prefix.
+ */
+function createFileCompleter(
+  readDirectory: FileAccessProvider['readDirectory'],
+): (value: string) => Promise<string[]> {
+  return async (value: string): Promise<string[]> => {
+    const lastSlash = value.lastIndexOf('/')
+    const dir = lastSlash >= 0 ? value.slice(0, lastSlash) : ''
+    const prefix = lastSlash >= 0 ? value.slice(lastSlash + 1) : value
+
+    try {
+      const entries = await readDirectory(dir || '.')
+      const lowerPrefix = prefix.toLowerCase()
+      return entries
+        .filter((entry) => entry.toLowerCase().startsWith(lowerPrefix))
+        .map((entry) => (dir ? `${dir}/${entry}` : entry))
+    } catch {
+      return []
+    }
   }
 }
 
@@ -465,11 +491,13 @@ function registerDiagnosticsResources(
   const diagnosticsProvider = capabilities.diagnostics
   if (!diagnosticsProvider) return
 
-  // Register file diagnostics resource template
   const fileDiagnosticsTemplate = new ResourceTemplate(
     'diagnostics://{+path}',
     {
       list: undefined, // Cannot enumerate all files with diagnostics
+      complete: {
+        path: createFileCompleter(capabilities.fileAccess.readDirectory),
+      },
     },
   )
 
@@ -613,7 +641,10 @@ function registerOutlineResource(
   if (!outlineProvider) return
 
   const outlineTemplate = new ResourceTemplate('outline://{+path}', {
-    list: undefined, // Cannot enumerate all files
+    list: undefined,
+    complete: {
+      path: createFileCompleter(capabilities.fileAccess.readDirectory),
+    },
   })
 
   server.registerResource(
@@ -804,6 +835,9 @@ function registerFilesystemResource(
 
   const filesystemTemplate = new ResourceTemplate('files://{+path}', {
     list: undefined, // Cannot enumerate all directories
+    complete: {
+      path: createFileCompleter(readDirectory),
+    },
   })
 
   server.registerResource(
@@ -988,9 +1022,11 @@ function registerGraphResources(
   const graphProvider = capabilities.graph
   if (!graphProvider) return
 
-  // Register outlinks resource template
   const outlinksTemplate = new ResourceTemplate('outlinks://{+path}', {
     list: undefined, // Cannot enumerate all files
+    complete: {
+      path: createFileCompleter(capabilities.fileAccess.readDirectory),
+    },
   })
 
   server.registerResource(
@@ -1031,9 +1067,11 @@ function registerGraphResources(
     },
   )
 
-  // Register backlinks resource template
   const backlinksTemplate = new ResourceTemplate('backlinks://{+path}', {
     list: undefined, // Cannot enumerate all files
+    complete: {
+      path: createFileCompleter(capabilities.fileAccess.readDirectory),
+    },
   })
 
   server.registerResource(
@@ -1273,6 +1311,9 @@ function registerFrontmatterResource(
 
   const frontmatterTemplate = new ResourceTemplate('frontmatter://{+path}', {
     list: undefined, // Cannot enumerate all files
+    complete: {
+      path: createFileCompleter(capabilities.fileAccess.readDirectory),
+    },
   })
 
   server.registerResource(
