@@ -1,7 +1,6 @@
 {
-  "name": "mcp-lsp-driver",
-  "version": "1.4.0",
-  "description": "MCP LSP Driver for IDE plugins to easily expose LSP features via an MCP server.",
+  "name": "@opticlm/connector",
+  "version": "2.0.0",
   "type": "module",
   "types": "dist/index.d.ts",
   "exports": {
@@ -34,7 +33,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/OpticLM/mcp-lspdriver-ts"
+    "url": "https://github.com/OpticLM/connector"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

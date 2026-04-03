@@ -27,19 +27,19 @@ A TypeScript SDK that bridges Language Server Protocol (LSP) capabilities with t
 ## Installation
 
 ```bash
-npm install mcp-lsp-driver
+npm install @opticlm/connector
 # or
-pnpm add mcp-lsp-driver
+pnpm add @opticlm/connector
 ```
 
 ## Quick Start
 
-Providers are installed one at a time onto an MCP server using `install()` from `mcp-lsp-driver/mcp`. Each call registers the tools and resources for that specific provider. Providers that depend on file access (definition, references, hierarchy, edit) receive a `fileAccess` option.
+Providers are installed one at a time onto an MCP server using `install()` from `@opticlm/connector/mcp`. Each call registers the tools and resources for that specific provider. Providers that depend on file access (definition, references, hierarchy, edit) receive a `fileAccess` option.
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { install } from 'mcp-lsp-driver/mcp'
+import { install } from '@opticlm/connector/mcp'
 import * as fs from 'fs/promises'
 
 // 1. Create your MCP server
@@ -153,7 +153,7 @@ Each provider with tools accepts optional `onInput` and `onOutput` callbacks in 
 Use them for logging, telemetry, or testing:
 
 ```typescript
-import { install } from 'mcp-lsp-driver/mcp'
+import { install } from '@opticlm/connector/mcp'
 
 // EditProvider — apply_edit
 install(server, editProvider, {
@@ -307,7 +307,7 @@ This works automatically — no additional configuration is needed.
 Providers can implement optional `onDiagnosticsChanged` and `onFileChanged` callbacks to make resources subscribable:
 
 ```typescript
-import { install } from 'mcp-lsp-driver/mcp'
+import { install } from '@opticlm/connector/mcp'
 
 install(server, {
   readFile: async (uri) => { /* ... */ },
@@ -355,7 +355,7 @@ When the MCP server runs in a separate process from the IDE plugin (e.g., spawne
 **IDE plugin side** — expose providers:
 
 ```typescript
-import { servePipe } from 'mcp-lsp-driver'
+import { servePipe } from '@opticlm/connector'
 
 const server = await servePipe({
   pipeName: 'my-ide-lsp',
@@ -376,8 +376,8 @@ const server = await servePipe({
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { connectPipe } from 'mcp-lsp-driver'
-import { install } from 'mcp-lsp-driver/mcp'
+import { connectPipe } from '@opticlm/connector'
+import { install } from '@opticlm/connector/mcp'
 
 const conn = await connectPipe({
   pipeName: 'my-ide-lsp',
@@ -410,8 +410,8 @@ For standalone MCP servers that need to communicate directly with an LSP server 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { createLspClient } from 'mcp-lsp-driver'
-import { install } from 'mcp-lsp-driver/mcp'
+import { createLspClient } from '@opticlm/connector'
+import { install } from '@opticlm/connector/mcp'
 import * as fs from 'fs/promises'
 
 // 1. Create and start the LSP client
