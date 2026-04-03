@@ -1,14 +1,10 @@
 /**
  * Capability Providers for MCP LSP Driver SDK
  *
- * The Plugin Developer provides an implementation of IdeCapabilities.
- * The SDK exposes tools based on which optional providers are defined.
- *
- * Note: All inputs here use ExactPosition. The SDK handles the
- * Fuzzy -> Exact conversion before calling these.
+ * Each provider interface corresponds to one LSP capability.
+ * Note: All inputs use ExactPosition. The SDK handles Fuzzy -> Exact conversion.
  */
 
-import type { EditProvider, FileAccessProvider } from './interfaces.js'
 import type {
   CodeSnippet,
   Diagnostic,
@@ -258,54 +254,8 @@ export interface FrontmatterProvider {
   ): Promise<void>
 }
 
-// ============================================================================
-// Composite IDE Capabilities
-// ============================================================================
-
 /**
  * Callback that gets invoked when diagnostics change.
  * Used for MCP resource subscription support.
  */
 export type OnDiagnosticsChangedCallback = (uri: UnifiedUri) => void
-
-/**
- * The complete set of capabilities that an IDE plugin can provide.
- * The SDK will automatically register tools based on which providers are defined.
- */
-export interface IdeCapabilities {
-  /** Mandatory: Provides file system access for reading files from disk */
-  fileAccess: FileAccessProvider
-
-  /** Optional: Provides edit capabilities for applying changes */
-  edit?: EditProvider
-
-  /** Optional: Provides go-to-definition functionality */
-  definition?: DefinitionProvider
-
-  /** Optional: Provides find-references functionality */
-  references?: ReferencesProvider
-
-  /** Optional: Provides call hierarchy functionality */
-  hierarchy?: HierarchyProvider
-
-  /** Optional: Provides diagnostics for files */
-  diagnostics?: DiagnosticsProvider
-
-  /** Optional: Provides document outline (symbols) for files */
-  outline?: OutlineProvider
-
-  /** Optional: Provides global find and replace functionality */
-  globalFind?: GlobalFindProvider
-
-  /** Optional: Provides graph/link functionality for document relationships */
-  graph?: GraphProvider
-
-  /** Optional: Provides frontmatter functionality for document metadata */
-  frontmatter?: FrontmatterProvider
-}
-
-/**
- * A partial set of IDE capabilities where all fields (including fileAccess) are optional.
- * Used with `mergeCapabilities` to combine multiple partial providers into a single IdeCapabilities.
- */
-export type PartialIdeCapabilities = Partial<IdeCapabilities>

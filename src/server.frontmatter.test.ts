@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { FrontmatterProvider, IdeCapabilities } from './capabilities.js'
+import type { FrontmatterProvider } from './capabilities.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
   createMockFrontmatterProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
 import type { Frontmatter, FrontmatterMatch } from './types.js'
+import { install } from './mcp/index.js'
 
 describe('frontmatter capability', () => {
   const mockFrontmatter: Frontmatter = {
@@ -27,25 +27,19 @@ describe('frontmatter capability', () => {
   it('should register frontmatter tools when frontmatter provider is available', () => {
     const server = createMockServer()
     const frontmatterProvider = createMockFrontmatterProvider()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      frontmatter: frontmatterProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
+    }).not.toThrow()
   })
 
   it('should not register frontmatter tools when provider is not available', async () => {
     const server = createMockServer()
     const frontmatterProvider = createMockFrontmatterProvider()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      frontmatter: frontmatterProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, frontmatterProvider)
 
     const client = await createAndConnectMockClient(server)
     const tools = await client.listTools()
@@ -57,14 +51,7 @@ describe('frontmatter capability', () => {
 
     // Now test without provider - just verify driver installs successfully
     const server2 = createMockServer()
-    const capabilities2: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-    }
-    const result2 = installMcpLspDriver({
-      server: server2,
-      capabilities: capabilities2,
-    })
-    expect(result2.success).toBeTruthy()
+    expect(() => install(server2, createMockFileAccess())).not.toThrow()
   })
 
   describe('get_frontmatter_structure tool', () => {
@@ -74,13 +61,9 @@ describe('frontmatter capability', () => {
         {},
         mockStructureMatches,
       )
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -103,13 +86,9 @@ describe('frontmatter capability', () => {
         { path: 'notes/doc1.md', value: 'Test Document 1' },
       ]
       const frontmatterProvider = createMockFrontmatterProvider({}, singleMatch)
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -132,13 +111,9 @@ describe('frontmatter capability', () => {
     it('should return empty array when no matches found', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider({}, [])
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -161,13 +136,9 @@ describe('frontmatter capability', () => {
         {},
         arrayMatches,
       )
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -189,13 +160,9 @@ describe('frontmatter capability', () => {
         }),
         setFrontmatter: vi.fn(async () => {}),
       }
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -214,13 +181,9 @@ describe('frontmatter capability', () => {
     it('should set a string value successfully', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider({}, [])
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -246,13 +209,9 @@ describe('frontmatter capability', () => {
     it('should set an array value successfully', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider({}, [])
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -278,13 +237,9 @@ describe('frontmatter capability', () => {
     it('should set a number value successfully', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider({}, [])
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -310,13 +265,9 @@ describe('frontmatter capability', () => {
     it('should set a boolean value successfully', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider({}, [])
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -342,13 +293,9 @@ describe('frontmatter capability', () => {
     it('should remove a property when value is null', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider({}, [])
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -378,13 +325,9 @@ describe('frontmatter capability', () => {
         [],
         new Error('Failed to update frontmatter'),
       )
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -412,13 +355,9 @@ describe('frontmatter capability', () => {
           throw new Error('Failed to write file')
         }),
       }
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -442,13 +381,9 @@ describe('frontmatter capability', () => {
     it('should return frontmatter as JSON', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider(mockFrontmatter)
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.readResource({
@@ -476,13 +411,9 @@ describe('frontmatter capability', () => {
     it('should return empty object when document has no frontmatter', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider({})
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.readResource({
@@ -501,13 +432,9 @@ describe('frontmatter capability', () => {
     it('should handle nested paths', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider(mockFrontmatter)
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.readResource({
@@ -529,13 +456,9 @@ describe('frontmatter capability', () => {
         getFrontmatterStructure: vi.fn(async () => []),
         setFrontmatter: vi.fn(async () => {}),
       }
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.readResource({
@@ -562,13 +485,9 @@ describe('frontmatter capability', () => {
         {},
         numberArrayMatches,
       )
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -589,13 +508,9 @@ describe('frontmatter capability', () => {
         {},
         boolArrayMatches,
       )
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -616,13 +531,9 @@ describe('frontmatter capability', () => {
         {},
         undefinedMatches,
       )
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
       const r = await client.callTool({
@@ -638,31 +549,25 @@ describe('frontmatter capability', () => {
   describe('integration with other capabilities', () => {
     it('should work alongside graph provider', () => {
       const server = createMockServer()
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: createMockFrontmatterProvider(),
-        graph: {
+
+      expect(() => {
+        install(server, createMockFileAccess())
+        install(server, createMockFrontmatterProvider())
+        install(server, {
           getLinkStructure: vi.fn(async () => []),
           resolveOutlinks: vi.fn(async () => []),
           resolveBacklinks: vi.fn(async () => []),
           addLink: vi.fn(async () => {}),
-        },
-      }
-
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+        })
+      }).not.toThrow()
     })
 
     it('should register both tools and resources', async () => {
       const server = createMockServer()
       const frontmatterProvider = createMockFrontmatterProvider()
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        frontmatter: frontmatterProvider,
-      }
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, createMockFileAccess())
+      install(server, frontmatterProvider)
 
       const client = await createAndConnectMockClient(server)
 

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import type { IdeCapabilities } from './capabilities.js'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
@@ -10,20 +9,17 @@ import {
   createMockServer,
   mockCodeSnippet,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
 import type { CodeSnippet } from './types.js'
+import { install } from './mcp/index.js'
 
 describe('tool registration', () => {
   it('should register goto_definition when definition provider is available', async () => {
     const server = createMockServer()
+    const fileAccess = createMockFileAccess()
     const definitionProvider = createMockDefinitionProvider()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      definition: definitionProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, definitionProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -44,14 +40,11 @@ describe('tool registration', () => {
 
   it('should register goto_type_definition when typeDefinition provider is available', async () => {
     const server = createMockServer()
+    const fileAccess = createMockFileAccess()
     const definitionProvider = createMockDefinitionProvider()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      definition: definitionProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, definitionProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -72,14 +65,15 @@ describe('tool registration', () => {
 
   it('should not register goto_type_definition when provideTypeDefinition is absent', async () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      definition: {
-        provideDefinition: async () => [mockCodeSnippet],
-      },
-    }
+    const fileAccess = createMockFileAccess()
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+    install(
+      server,
+      { provideDefinition: async () => [mockCodeSnippet] },
+      { fileAccess },
+    )
+
     const client = await createAndConnectMockClient(server)
 
     const r = await client.callTool({
@@ -115,13 +109,10 @@ describe('tool registration', () => {
       'path/to/file':
         'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nsomeVariable\nline11',
     }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      references: referencesProvider,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, referencesProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -176,13 +167,10 @@ describe('tool registration', () => {
       'path/to/file':
         'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\ntargetFunction\nline11',
     }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      hierarchy: hierarchyProvider,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, hierarchyProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -229,12 +217,11 @@ describe('tool registration', () => {
       'path/to/file':
         'line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\ntargetFunction\nline11',
     }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      hierarchy: hierarchyProvider,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+    install(server, hierarchyProvider, { fileAccess })
+
     const client = await createAndConnectMockClient(server)
     await client.callTool({
       name: 'call_hierarchy',
@@ -256,13 +243,10 @@ describe('tool registration', () => {
     const server = createMockServer()
     const edit = createMockEditProvider(true)
     const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      edit,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, edit, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -284,13 +268,10 @@ describe('tool registration', () => {
     const server = createMockServer()
     const edit = createMockEditProvider(false)
     const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      edit,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, edit, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -312,12 +293,11 @@ describe('tool registration', () => {
     const server = createMockServer()
     const definitionProvider = createMockDefinitionProvider()
     const files = { 'test.ts': 'const foo = 1' }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      definition: definitionProvider,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+    install(server, definitionProvider, { fileAccess })
+
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
       name: 'goto_definition',
@@ -329,16 +309,19 @@ describe('tool registration', () => {
   it('should return error when definition provider throws', async () => {
     const server = createMockServer()
     const files = { 'test.ts': 'const foo = 1' }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      definition: {
+    const fileAccess = createMockFileAccess(files)
+
+    install(server, fileAccess)
+    install(
+      server,
+      {
         provideDefinition: async () => {
           throw new Error('Provider crashed')
         },
       },
-    }
+      { fileAccess },
+    )
 
-    installMcpLspDriver({ server, capabilities })
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
       name: 'goto_definition',
@@ -352,12 +335,11 @@ describe('tool registration', () => {
     const server = createMockServer()
     const edit = createMockEditProvider(true)
     const files = { 'test.ts': 'const foo = 1;' }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      edit,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+    install(server, edit, { fileAccess })
+
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
       name: 'apply_edit',

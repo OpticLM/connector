@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import type { IdeCapabilities } from './capabilities.js'
 import {
   createAndConnectMockClient,
   createMockDiagnosticsProvider,
@@ -7,8 +6,8 @@ import {
   createMockOutlineProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
 import type { Diagnostic, DocumentSymbol } from './types.js'
+import { install } from './mcp/index.js'
 
 describe('resource integration', () => {
   it('should register and access file diagnostics resource', async () => {
@@ -27,13 +26,10 @@ describe('resource integration', () => {
       },
     ]
     const diagnosticsProvider = createMockDiagnosticsProvider(diagnostics)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      diagnostics: diagnosticsProvider,
-    }
+    const fileAccess = createMockFileAccess()
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, diagnosticsProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({ uri: 'diagnostics://test.ts' })
@@ -71,13 +67,10 @@ describe('resource integration', () => {
       [],
       workspaceDiagnostics,
     )
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      diagnostics: diagnosticsProvider,
-    }
+    const fileAccess = createMockFileAccess()
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, diagnosticsProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({ uri: 'diagnostics://workspace' })
@@ -124,13 +117,10 @@ describe('resource integration', () => {
       },
     ]
     const outlineProvider = createMockOutlineProvider(symbols)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      outline: outlineProvider,
-    }
+    const fileAccess = createMockFileAccess()
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, outlineProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({ uri: 'outline://test.ts' })
@@ -188,13 +178,10 @@ describe('resource integration', () => {
       },
     ]
     const outlineProvider = createMockOutlineProvider(symbols)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      outline: outlineProvider,
-    }
+    const fileAccess = createMockFileAccess()
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
+    install(server, outlineProvider, { fileAccess })
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({ uri: 'outline://test.ts' })
@@ -210,12 +197,9 @@ describe('resource integration', () => {
 
   it('should register and access filesystem resource for directory listing', async () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({}), // No files, so it falls back to readDirectory
-    }
+    const fileAccess = createMockFileAccess({}) // No files, so it falls back to readDirectory
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({ uri: 'files://src' })
@@ -230,14 +214,9 @@ describe('resource integration', () => {
   it('should read file content via filesystem resource', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2\nline3\nline4\nline5'
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({
-        'src/test.ts': fileContent,
-      }),
-    }
+    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -254,14 +233,9 @@ describe('resource integration', () => {
   it('should read specific line from file via filesystem resource', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2\nline3\nline4\nline5'
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({
-        'src/test.ts': fileContent,
-      }),
-    }
+    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -278,14 +252,9 @@ describe('resource integration', () => {
   it('should read line range from file via filesystem resource', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2\nline3\nline4\nline5'
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({
-        'src/test.ts': fileContent,
-      }),
-    }
+    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -303,14 +272,9 @@ describe('resource integration', () => {
     const server = createMockServer()
     const fileContent =
       'import { foo } from "bar"\nconst x = 1\nimport { baz } from "qux"\nexport default x'
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({
-        'src/test.ts': fileContent,
-      }),
-    }
+    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -327,14 +291,9 @@ describe('resource integration', () => {
   it('should combine line range with regex pattern', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2 match\nline3\nline4 match\nline5'
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({
-        'src/test.ts': fileContent,
-      }),
-    }
+    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -351,14 +310,9 @@ describe('resource integration', () => {
   it('should support fragment-before-query ordering (#L2-L4?pattern=match)', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2 match\nline3\nline4 match\nline5'
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({
-        'src/test.ts': fileContent,
-      }),
-    }
+    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -374,12 +328,9 @@ describe('resource integration', () => {
 
   it('should fallback to readDirectory when file read fails on files://', async () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({}), // No files, readFile will fail
-    }
+    const fileAccess = createMockFileAccess({}) // No files, readFile will fail
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, fileAccess)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({ uri: 'files://src' })

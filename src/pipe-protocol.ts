@@ -1,5 +1,4 @@
 import type { Socket } from 'node:net'
-import type { IdeCapabilities } from './capabilities.js'
 
 // ============================================================================
 // Message Types
@@ -174,14 +173,22 @@ export function toPipePath(pipeName: string): string {
 // Provider Method Registry
 // ============================================================================
 
-type ProviderKeys = keyof IdeCapabilities
+export type PipeProviderKey =
+  | 'fileAccess'
+  | 'edit'
+  | 'definition'
+  | 'references'
+  | 'hierarchy'
+  | 'diagnostics'
+  | 'outline'
+  | 'globalFind'
+  | 'graph'
+  | 'frontmatter'
 
-type ProviderMethodEntry = {
-  [K in ProviderKeys]: {
-    providerKey: K
-    methods: (keyof NonNullable<IdeCapabilities[K]> & string)[]
-  }
-}[ProviderKeys]
+export type ProviderMethodEntry = {
+  providerKey: PipeProviderKey
+  methods: string[]
+}
 
 export const PROVIDER_METHODS: ProviderMethodEntry[] = [
   {

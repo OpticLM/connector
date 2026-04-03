@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { IdeCapabilities } from './capabilities.js'
-import { mergeCapabilities } from './merge.js'
-import { connectLspPipe, type LspPipeConnection } from './pipe-client.js'
-import { type LspPipeServer, serveLspPipe } from './pipe-server.js'
+import { install } from './mcp/index.js'
+import { connectPipe, type LspPipeConnection } from './pipe-client.js'
+import {
+  type LspPipeServer,
+  servePipe,
+  type servePipeOptions,
+} from './pipe-server.js'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
@@ -19,7 +22,6 @@ import {
   createMockServer,
   mockCodeSnippet,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
 import type { Diagnostic } from './types.js'
 
 function uniquePipeName(): string {
@@ -40,21 +42,18 @@ afterEach(async () => {
   servers.length = 0
 })
 
-async function setupPipe(capabilities: IdeCapabilities) {
+async function setupPipe(options: Omit<servePipeOptions, 'pipeName'>) {
   const pipeName = uniquePipeName()
-  const server = await serveLspPipe({ capabilities, pipeName })
+  const server = await servePipe({ ...options, pipeName })
   servers.push(server)
-  const conn = await connectLspPipe({ pipeName })
+  const conn = await connectPipe({ pipeName })
   connections.push(conn)
   return { server, conn }
 }
 
 describe('Pipe IPC - Handshake', () => {
   it('minimal caps: only fileAccess methods', async () => {
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-    }
-    const { conn } = await setupPipe(capabilities)
+    const { conn } = await setupPipe({ fileAccess: createMockFileAccess() })
 
     expect(conn.availableMethods).toContain('fileAccess.readFile')
     expect(conn.availableMethods).toContain('fileAccess.readDirectory')
@@ -64,7 +63,7 @@ describe('Pipe IPC - Handshake', () => {
   })
 
   it('full caps: all methods present', async () => {
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       edit: createMockEditProvider(),
       definition: createMockDefinitionProvider(),
@@ -78,9 +77,7 @@ describe('Pipe IPC - Handshake', () => {
       globalFind: createMockGlobalFindProvider(),
       graph: createMockGraphProvider(),
       frontmatter: createMockFrontmatterProvider(),
-      onDiagnosticsChanged: (_cb: (uri: string) => void) => {},
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
     expect(conn.availableMethods).toContain('fileAccess.readFile')
     expect(conn.availableMethods).toContain('edit.previewAndApplyEdits')
@@ -106,61 +103,54 @@ describe('Pipe IPC - Handshake', () => {
 describe('Pipe IPC - Round-trip', () => {
   it('fileAccess.readFile', async () => {
     const files = { 'test.txt': 'hello world' }
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(files),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result = await conn.capabilities.fileAccess?.readFile('test.txt')
+    const result = await conn.fileAccess?.readFile('test.txt')
     expect(result).toBe('hello world')
   })
 
   it('fileAccess.readDirectory', async () => {
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-    }
-    const { conn } = await setupPipe(capabilities)
+    const { conn } = await setupPipe({ fileAccess: createMockFileAccess() })
 
-    const result = await conn.capabilities.fileAccess?.readDirectory('src')
+    const result = await conn.fileAccess?.readDirectory('src')
     expect(result).toStrictEqual(['file1.ts', 'file2.ts', 'subdir'])
   })
 
   it('definition.provideDefinition', async () => {
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       definition: createMockDefinitionProvider([mockCodeSnippet]),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result = await conn.capabilities.definition?.provideDefinition(
-      'path/to/file',
-      { line: 0, character: 1 },
-    )
+    const result = await conn.definition?.provideDefinition('path/to/file', {
+      line: 0,
+      character: 1,
+    })
     expect(result).toStrictEqual([mockCodeSnippet])
   })
 
   it('references.provideReferences', async () => {
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       references: createMockReferencesProvider([mockCodeSnippet]),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result = await conn.capabilities.references?.provideReferences(
-      'path/to/file',
-      { line: 0, character: 1 },
-    )
+    const result = await conn.references?.provideReferences('path/to/file', {
+      line: 0,
+      character: 1,
+    })
     expect(result).toStrictEqual([mockCodeSnippet])
   })
 
   it('hierarchy.provideCallHierarchy', async () => {
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       hierarchy: createMockHierarchyProvider([mockCodeSnippet]),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result = await conn.capabilities.hierarchy?.provideCallHierarchy(
+    const result = await conn.hierarchy?.provideCallHierarchy(
       'path/to/file',
       { line: 0, character: 1 },
       'incoming',
@@ -178,26 +168,22 @@ describe('Pipe IPC - Round-trip', () => {
       severity: 'error',
       message: 'test error',
     }
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       diagnostics: createMockDiagnosticsProvider([diag]),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result =
-      await conn.capabilities.diagnostics?.provideDiagnostics('path/to/file')
+    const result = await conn.diagnostics?.provideDiagnostics('path/to/file')
     expect(result).toStrictEqual([diag])
   })
 
   it('outline.provideDocumentSymbols', async () => {
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       outline: createMockOutlineProvider([]),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result =
-      await conn.capabilities.outline?.provideDocumentSymbols('path/to/file')
+    const result = await conn.outline?.provideDocumentSymbols('path/to/file')
     expect(result).toStrictEqual([])
   })
 
@@ -211,13 +197,12 @@ describe('Pipe IPC - Round-trip', () => {
         context: 'test line',
       },
     ]
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       globalFind: createMockGlobalFindProvider(matches),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result = await conn.capabilities.globalFind?.globalFind('test', {
+    const result = await conn.globalFind?.globalFind('test', {
       caseSensitive: false,
       exactMatch: false,
       regexMode: false,
@@ -226,13 +211,12 @@ describe('Pipe IPC - Round-trip', () => {
   })
 
   it('edit.previewAndApplyEdits returns boolean', async () => {
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       edit: createMockEditProvider(true),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result = await conn.capabilities.edit?.previewAndApplyEdits?.({
+    const result = await conn.edit?.previewAndApplyEdits?.({
       id: 'test-edit',
       uri: 'path/to/file',
       edits: [],
@@ -250,26 +234,23 @@ describe('Pipe IPC - Round-trip', () => {
         column: 1,
       },
     ]
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       graph: createMockGraphProvider(links),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result = await conn.capabilities.graph?.getLinkStructure()
+    const result = await conn.graph?.getLinkStructure()
     expect(result).toStrictEqual(links)
   })
 
   it('frontmatter.getFrontmatter returns metadata', async () => {
     const fm = { title: 'Test', tags: ['a', 'b'] }
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       frontmatter: createMockFrontmatterProvider(fm),
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    const result =
-      await conn.capabilities.frontmatter?.getFrontmatter('test.md')
+    const result = await conn.frontmatter?.getFrontmatter('test.md')
     expect(result).toStrictEqual(fm)
   })
 })
@@ -283,24 +264,18 @@ describe('Pipe IPC - End-to-end with MCP', () => {
     const files = {
       'path/to/file': 'MockFileContent',
     }
-    const capabilities: IdeCapabilities = {
+
+    // Set up pipe server with the real providers
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(files),
       definition: createMockDefinitionProvider([mockCodeSnippet]),
-    }
-
-    // Set up pipe
-    const { conn } = await setupPipe(capabilities)
-
-    // Set up MCP with proxy capabilities merged via mergeCapabilities
-    const mcpServer = createMockServer()
-    const { success } = installMcpLspDriver({
-      server: mcpServer,
-      capabilities: mergeCapabilities(
-        [conn.capabilities],
-        createMockFileAccess(files),
-      ),
     })
-    expect(success).toBeTruthy()
+
+    // Set up MCP using proxy providers from the pipe connection
+    const mcpServer = createMockServer()
+    const fileAccess = conn.fileAccess ?? createMockFileAccess(files)
+    install(mcpServer, fileAccess)
+    if (conn.definition) install(mcpServer, conn.definition, { fileAccess })
 
     // Connect MCP client
     const mcpClient = await createAndConnectMockClient(mcpServer)
@@ -329,7 +304,7 @@ describe('Pipe IPC - End-to-end with MCP', () => {
 describe('Pipe IPC - Push notifications', () => {
   it('onDiagnosticsChanged fires on client', async () => {
     let serverBroadcast: ((uri: string) => void) | undefined
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(),
       diagnostics: {
         provideDiagnostics: vi.fn(async () => []),
@@ -337,11 +312,10 @@ describe('Pipe IPC - Push notifications', () => {
           serverBroadcast = cb
         },
       },
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
     const received: string[] = []
-    conn.capabilities.diagnostics?.onDiagnosticsChanged?.((uri) => {
+    conn.diagnostics?.onDiagnosticsChanged?.((uri) => {
       received.push(uri)
     })
 
@@ -358,26 +332,26 @@ describe('Pipe IPC - Push notifications', () => {
 describe('Pipe IPC - Multiple clients', () => {
   it('two clients connected simultaneously', async () => {
     const files = { 'test.txt': 'content-a' }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-    }
 
     const pipeName = uniquePipeName()
-    const server = await serveLspPipe({ capabilities, pipeName })
+    const server = await servePipe({
+      fileAccess: createMockFileAccess(files),
+      pipeName,
+    })
     servers.push(server)
 
-    const conn1 = await connectLspPipe({ pipeName })
+    const conn1 = await connectPipe({ pipeName })
     connections.push(conn1)
     expect(server.connectionCount).toBe(1)
 
-    const conn2 = await connectLspPipe({ pipeName })
+    const conn2 = await connectPipe({ pipeName })
     connections.push(conn2)
     expect(server.connectionCount).toBe(2)
 
     // Both get responses
     const [r1, r2] = await Promise.all([
-      conn1.capabilities.fileAccess?.readFile('test.txt'),
-      conn2.capabilities.fileAccess?.readFile('test.txt'),
+      conn1.fileAccess?.readFile('test.txt'),
+      conn2.fileAccess?.readFile('test.txt'),
     ])
     expect(r1).toBe('content-a')
     expect(r2).toBe('content-a')
@@ -388,13 +362,15 @@ describe('Pipe IPC - Multiple clients', () => {
     await new Promise((r) => setTimeout(r, 50))
     expect(server.connectionCount).toBe(1)
 
-    const r3 = await conn2.capabilities.fileAccess?.readFile('test.txt')
+    const r3 = await conn2.fileAccess?.readFile('test.txt')
     expect(r3).toBe('content-a')
   })
 
   it('both clients receive notifications', async () => {
     let serverBroadcast: ((uri: string) => void) | undefined
-    const capabilities: IdeCapabilities = {
+
+    const pipeName = uniquePipeName()
+    const server = await servePipe({
       fileAccess: createMockFileAccess(),
       diagnostics: {
         provideDiagnostics: vi.fn(async () => []),
@@ -402,25 +378,19 @@ describe('Pipe IPC - Multiple clients', () => {
           serverBroadcast = cb
         },
       },
-    }
-
-    const pipeName = uniquePipeName()
-    const server = await serveLspPipe({ capabilities, pipeName })
+      pipeName,
+    })
     servers.push(server)
 
-    const conn1 = await connectLspPipe({ pipeName })
+    const conn1 = await connectPipe({ pipeName })
     connections.push(conn1)
-    const conn2 = await connectLspPipe({ pipeName })
+    const conn2 = await connectPipe({ pipeName })
     connections.push(conn2)
 
     const received1: string[] = []
     const received2: string[] = []
-    conn1.capabilities.diagnostics?.onDiagnosticsChanged?.((uri) =>
-      received1.push(uri),
-    )
-    conn2.capabilities.diagnostics?.onDiagnosticsChanged?.((uri) =>
-      received2.push(uri),
-    )
+    conn1.diagnostics?.onDiagnosticsChanged?.((uri) => received1.push(uri))
+    conn2.diagnostics?.onDiagnosticsChanged?.((uri) => received2.push(uri))
 
     serverBroadcast?.('file.ts')
     await new Promise((r) => setTimeout(r, 50))
@@ -432,40 +402,35 @@ describe('Pipe IPC - Multiple clients', () => {
 
 describe('Pipe IPC - Error propagation', () => {
   it('server handler throws: client gets rejected promise', async () => {
-    const capabilities: IdeCapabilities = {
+    const { conn } = await setupPipe({
       fileAccess: createMockFileAccess(), // readFile throws for unknown URIs
-    }
-    const { conn } = await setupPipe(capabilities)
+    })
 
-    await expect(
-      conn.capabilities.fileAccess?.readFile('nonexistent.txt'),
-    ).rejects.toThrow('File not found: nonexistent.txt')
+    await expect(conn.fileAccess?.readFile('nonexistent.txt')).rejects.toThrow(
+      'File not found: nonexistent.txt',
+    )
   })
 })
 
 describe('Pipe IPC - Cleanup', () => {
   it('server.close() rejects pending client requests', async () => {
     // Create a slow handler to keep a request pending
-    const slowCapabilities: IdeCapabilities = {
+    const pipeName = uniquePipeName()
+    const server = await servePipe({
       fileAccess: {
         readFile: () =>
           new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
         readDirectory: vi.fn(async () => []),
       },
-    }
-
-    const pipeName = uniquePipeName()
-    const server = await serveLspPipe({
-      capabilities: slowCapabilities,
       pipeName,
     })
     servers.push(server)
 
-    const conn = await connectLspPipe({ pipeName })
+    const conn = await connectPipe({ pipeName })
     connections.push(conn)
 
     // Start a slow request
-    const pending = conn.capabilities.fileAccess?.readFile('slow.txt')
+    const pending = conn.fileAccess?.readFile('slow.txt')
 
     // Close server while request is pending
     await server.close()
@@ -474,25 +439,21 @@ describe('Pipe IPC - Cleanup', () => {
   })
 
   it('client.disconnect() rejects pending requests', async () => {
-    const slowCapabilities: IdeCapabilities = {
+    const pipeName = uniquePipeName()
+    const server = await servePipe({
       fileAccess: {
         readFile: () =>
           new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
         readDirectory: vi.fn(async () => []),
       },
-    }
-
-    const pipeName = uniquePipeName()
-    const server = await serveLspPipe({
-      capabilities: slowCapabilities,
       pipeName,
     })
     servers.push(server)
 
-    const conn = await connectLspPipe({ pipeName })
+    const conn = await connectPipe({ pipeName })
     // Don't push to connections array since we'll disconnect manually
 
-    const pending = conn.capabilities.fileAccess?.readFile('slow.txt')
+    const pending = conn.fileAccess?.readFile('slow.txt')
     conn.disconnect()
 
     await expect(pending).rejects.toThrow()
@@ -505,7 +466,7 @@ describe('Pipe IPC - Cleanup', () => {
 describe('Pipe IPC - Connection timeout', () => {
   it('connect to non-existent pipe with short timeout rejects', async () => {
     await expect(
-      connectLspPipe({
+      connectPipe({
         pipeName: `nonexistent-pipe-${randomUUID()}`,
         connectTimeout: 200,
       }),

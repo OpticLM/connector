@@ -1,21 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { IdeCapabilities } from './capabilities.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
   createMockOutlineProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
+import { install } from './mcp/index.js'
 
 describe('resource template file completion', () => {
   it('should complete file paths from root directory', async () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-    }
+    const fileAccess = createMockFileAccess()
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+
     const client = await createAndConnectMockClient(server)
 
     const result = await client.complete({
@@ -28,11 +26,10 @@ describe('resource template file completion', () => {
 
   it('should filter entries by prefix', async () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-    }
+    const fileAccess = createMockFileAccess()
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+
     const client = await createAndConnectMockClient(server)
 
     const result = await client.complete({
@@ -52,9 +49,9 @@ describe('resource template file completion', () => {
         return ['file1.ts', 'file2.ts', 'src']
       },
     )
-    const capabilities: IdeCapabilities = { fileAccess }
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+
     const client = await createAndConnectMockClient(server)
 
     const result = await client.complete({
@@ -73,9 +70,9 @@ describe('resource template file completion', () => {
       'readme.txt',
       'src',
     ])
-    const capabilities: IdeCapabilities = { fileAccess }
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+
     const client = await createAndConnectMockClient(server)
 
     const result = await client.complete({
@@ -92,9 +89,9 @@ describe('resource template file completion', () => {
     vi.mocked(fileAccess.readDirectory).mockRejectedValue(
       new Error('Directory not found'),
     )
-    const capabilities: IdeCapabilities = { fileAccess }
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+
     const client = await createAndConnectMockClient(server)
 
     const result = await client.complete({
@@ -107,14 +104,15 @@ describe('resource template file completion', () => {
 
   it('should support completion on diagnostics resource template', async () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      diagnostics: {
-        provideDiagnostics: vi.fn(async () => []),
-      },
-    }
+    const fileAccess = createMockFileAccess()
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+    install(
+      server,
+      { provideDiagnostics: vi.fn(async () => []) },
+      { fileAccess },
+    )
+
     const client = await createAndConnectMockClient(server)
 
     const result = await client.complete({
@@ -127,12 +125,11 @@ describe('resource template file completion', () => {
 
   it('should support completion on outline resource template', async () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      outline: createMockOutlineProvider(),
-    }
+    const fileAccess = createMockFileAccess()
 
-    installMcpLspDriver({ server, capabilities })
+    install(server, fileAccess)
+    install(server, createMockOutlineProvider(), { fileAccess })
+
     const client = await createAndConnectMockClient(server)
 
     const result = await client.complete({

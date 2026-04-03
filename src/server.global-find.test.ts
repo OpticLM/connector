@@ -1,24 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import type { GlobalFindMatch, IdeCapabilities } from './capabilities.js'
+import type { GlobalFindMatch } from './capabilities.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
   createMockGlobalFindProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
+import { install } from './mcp/index.js'
 
 describe('global find and replace tools', () => {
   it('should register global_find tool when globalFind provider is available', () => {
     const server = createMockServer()
     const globalFindProvider = createMockGlobalFindProvider()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      globalFind: globalFindProvider,
-    }
+    const fileAccess = createMockFileAccess()
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, fileAccess)
+      install(server, globalFindProvider)
+    }).not.toThrow()
   })
 
   it('should register global_find tool and return formatted results', async () => {
@@ -40,13 +39,9 @@ describe('global find and replace tools', () => {
       },
     ]
     const globalFindProvider = createMockGlobalFindProvider(matches)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      globalFind: globalFindProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, globalFindProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -82,13 +77,9 @@ describe('global find and replace tools', () => {
   it('should handle global_find with no matches', async () => {
     const server = createMockServer()
     const globalFindProvider = createMockGlobalFindProvider([])
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      globalFind: globalFindProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, globalFindProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -106,13 +97,9 @@ describe('global find and replace tools', () => {
   it('should use default values for optional global_find parameters', async () => {
     const server = createMockServer()
     const globalFindProvider = createMockGlobalFindProvider([])
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      globalFind: globalFindProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, globalFindProvider)
 
     const client = await createAndConnectMockClient(server)
     await client.callTool({

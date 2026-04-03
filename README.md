@@ -12,7 +12,6 @@ A TypeScript SDK that bridges Language Server Protocol (LSP) capabilities with t
 - [Auto-Complete for File Paths](#auto-complete-for-file-paths)
 - [Subscription and Change Notifications](#subscription-and-change-notifications)
 - [Symbol Resolution](#symbol-resolution)
-- [Merging Capabilities](#merging-capabilities)
 - [Pipe IPC (Out-of-Process)](#pipe-ipc-out-of-process)
 - [LSP Client (Built-in)](#lsp-client-built-in)
 - [Requirements](#requirements)
@@ -34,10 +33,12 @@ pnpm add mcp-lsp-driver
 
 ## Quick Start
 
+Providers are installed one at a time onto an MCP server using `install()` from `mcp-lsp-driver/mcp`. Each call registers the tools and resources for that specific provider. Providers that depend on file access (definition, references, hierarchy, edit) receive a `fileAccess` option.
+
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { installMcpLspDriver, type IdeCapabilities } from 'mcp-lsp-driver'
+import { install } from 'mcp-lsp-driver/mcp'
 import * as fs from 'fs/promises'
 
 // 1. Create your MCP server
@@ -46,82 +47,65 @@ const server = new McpServer({
   version: '1.0.0'
 })
 
-// 2. Implement File Access (required)
+// 2. Implement File Access
 const fileAccess = {
   readFile: async (uri: string) => {
     return await fs.readFile(uri, 'utf-8')
   },
-
-  readDirectory: (uri: string) => yourIDE.workspace.readDirectory(uri)
+  readDirectory: (uri: string) => yourIDE.workspace.readDirectory(uri),
 }
 
-// 3. Implement Edit Provider (required for edits)
+// 3. Implement Edit Provider
 const edit = {
-  // Option 1: Preview and apply with user approval
+  // Show diff in your IDE and get user approval
   previewAndApplyEdits: async (operation) => {
-    // Show diff in your IDE and get user approval
     return await showDiffDialog(operation)
   },
-  // Option 2: Apply directly without preview (use one or both)
-  applyEdits: async (operation) => {
-    // Apply edits directly
-    return await yourIDE.applyEdits(operation)
-  }
 }
 
 // 4. Implement LSP Capability Providers
 const definition = {
   provideDefinition: async (uri, position) => {
-    // Call your IDE's LSP to get definition
     return await lspClient.getDefinition(uri, position)
-  }
+  },
 }
 
 const diagnostics = {
   provideDiagnostics: async (uri) => {
-    // Get diagnostics from your IDE for the file
     return await lspClient.getDiagnostics(uri)
   },
   getWorkspaceDiagnostics: async () => {
-    // Optional: Get all diagnostics in the workspace
     return await lspClient.getWorkspaceDiagnostics()
-  }
+  },
+  onDiagnosticsChanged: (callback) => {
+    yourIDE.onDiagnosticsChanged((uri) => callback(uri))
+  },
 }
 
 const outline = {
   provideDocumentSymbols: async (uri) => {
-    // Get document symbols from your IDE
     return await lspClient.getDocumentSymbols(uri)
-  }
-}
-
-// 5. Register LSP tools and resources on the server
-const capabilities: IdeCapabilities = {
-  fileAccess,
-  edit,
-  definition,
-  diagnostics: {
-    ...diagnostics,
-    onDiagnosticsChanged: (callback) => {
-      // Register for diagnostic changes
-      yourIDE.onDiagnosticsChanged((uri) => callback(uri))
-    },
   },
-  outline,
-  filesystem,
-  // Add more capabilities as needed
 }
 
-installMcpLspDriver({ server, capabilities })
+// 5. Install providers onto the server
+//    fileAccess is installed first; others receive it as an option when needed
+install(server, fileAccess)
+install(server, edit, { fileAccess })
+install(server, definition, { fileAccess })
+install(server, diagnostics, { fileAccess })
+install(server, outline, { fileAccess })
 
 // 6. Connect to transport (you control the server lifecycle)
 const transport = new StdioServerTransport()
 await server.connect(transport)
 ```
 
+Each `install()` call is independent — only install the providers your IDE actually supports. The `fileAccess` option is required for providers that read files (edit, definition, references, hierarchy) and is used optionally by others for path auto-complete.
+
 ## MCP Tools
 
-The SDK automatically registers tools based on which capabilities you provide:
+The SDK automatically registers tools based on which providers you install:
 
 ### `goto_definition`
 
@@ -163,7 +147,7 @@ Set a frontmatter property on a document.
 
 ## MCP Resources
 
-The SDK automatically registers resources based on which capabilities you provide:
+The SDK automatically registers resources based on which providers you install:
 
 ### `diagnostics://{path}`
 
@@ -275,24 +259,23 @@ This works automatically — no additional configuration is needed.
 Providers can implement optional `onDiagnosticsChanged` and `onFileChanged` callbacks to make resources subscribable:
 
 ```typescript
-const capabilities: IdeCapabilities = {
-  fileAccess: {
-    readFile: async (uri) => { /* ... */ },
-    readDirectory: async (path) => { /* ... */ },
-    onFileChanged: (callback) => {
-      // Register your IDE's file change listener
-      yourIDE.onFileChanged((uri) => callback(uri))
-    },
+import { install } from 'mcp-lsp-driver/mcp'
+
+install(server, {
+  readFile: async (uri) => { /* ... */ },
+  readDirectory: async (path) => { /* ... */ },
+  onFileChanged: (callback) => {
+    yourIDE.onFileChanged((uri) => callback(uri))
   },
-  diagnostics: {
-    provideDiagnostics: async (uri) => { /* ... */ },
-    getWorkspaceDiagnostics: async () => { /* ... */ },
-    onDiagnosticsChanged: (callback) => {
-      // Register your IDE's diagnostic change listener
-      yourIDE.onDiagnosticsChanged((uri) => callback(uri))
-    },
+})
+
+install(server, {
+  provideDiagnostics: async (uri) => { /* ... */ },
+  getWorkspaceDiagnostics: async () => { /* ... */ },
+  onDiagnosticsChanged: (callback) => {
+    yourIDE.onDiagnosticsChanged((uri) => callback(uri))
   },
-}
+})
 ```
 
 When diagnostics or files change, call the registered callback with the affected file URI. The driver will send MCP resource update notifications to subscribers.
@@ -306,95 +289,71 @@ The SDK uses a robust algorithm to handle imprecise LLM positioning:
 3. **Robustness Fallback**: If not found, scan +/- 2 lines (configurable)
 4. Use `orderHint` to select the Nth occurrence if needed
 
-Configure the search radius:
+Configure the search radius via the `resolverConfig` option:
 
 ```typescript
-installMcpLspDriver({ server, capabilities, config: {
+install(server, definitionProvider, {
+  fileAccess,
   resolverConfig: {
-    lineSearchRadius: 5  // Default: 2
-  }
-}})
+    lineSearchRadius: 5,  // Default: 2
+  },
+})
 ```
-
-## Merging Capabilities
-
-When you have multiple providers (e.g., an LSP client and a pipe connection), use `mergeCapabilities` to combine them into a single `IdeCapabilities` object. Pass a fallback `FileAccessProvider` that is used when none of the partials supply one.
-
-```typescript
-import { mergeCapabilities, installMcpLspDriver } from 'mcp-lsp-driver'
-import type { PartialIdeCapabilities } from 'mcp-lsp-driver'
-
-const lspCaps: PartialIdeCapabilities = {
-  definition: lsp.definition,
-  references: lsp.references,
-}
-
-const pipeCaps: PartialIdeCapabilities = {
-  diagnostics: pipeDiagnostics,
-  outline: pipeOutline,
-}
-
-const fallbackFileAccess = {
-  readFile: (uri) => fs.readFile(uri, 'utf-8'),
-  readDirectory: async () => [],
-}
-
-const merged = mergeCapabilities([lspCaps, pipeCaps], fallbackFileAccess)
-
-installMcpLspDriver({ server, capabilities: merged })
-```
-
-- **Read providers** (definition, references, hierarchy, diagnostics, outline, globalFind, graph, frontmatter) concat their results via `Promise.all` + `flat`.
-- **Write/mutation providers** (edit, `addLink`, `setFrontmatter`) use the first available ("first wins").
-- **`onDiagnosticsChanged`** and **`onFileChanged`** register the callback on every provider that supplies them.
-- **`fileAccess`** uses the first partial that provides it, falling back to the `fallbackFileAccess` argument.
 
 ## Pipe IPC (Out-of-Process)
 
 When the MCP server runs in a separate process from the IDE plugin (e.g., spawned via stdio transport), the Pipe IPC layer lets the two communicate over a named pipe.
 
-**IDE plugin side** — expose capabilities:
+**IDE plugin side** — expose providers:
 
 ```typescript
-import { serveLspPipe, type IdeCapabilities } from 'mcp-lsp-driver'
+import { servePipe } from 'mcp-lsp-driver'
 
-const capabilities: IdeCapabilities = {
+const server = await servePipe({
+  pipeName: 'my-ide-lsp',
   fileAccess: { /* ... */ },
   definition: { /* ... */ },
-  // ...
-}
-
-const server = await serveLspPipe({
-  pipeName: 'my-ide-lsp',
-  capabilities,
+  diagnostics: {
+    provideDiagnostics: async (uri) => { /* ... */ },
+    onDiagnosticsChanged: (callback) => { /* ... */ },
+  },
+  // Add only the providers your IDE supports
 })
-// server.pipePath  — the resolved pipe path
+// server.pipePath        — the resolved pipe path
 // server.connectionCount — number of connected clients
-// await server.close() — shut down
+// await server.close()   — shut down
 ```
 
-**MCP server side** — connect and use proxy capabilities:
+**MCP server side** — connect and install proxy providers:
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { connectLspPipe, installMcpLspDriver } from 'mcp-lsp-driver'
+import { connectPipe } from 'mcp-lsp-driver'
+import { install } from 'mcp-lsp-driver/mcp'
 
-const conn = await connectLspPipe({
+const conn = await connectPipe({
   pipeName: 'my-ide-lsp',
-  connectTimeout: 5000, // optional, default 5000ms
+  connectTimeout: 5000,  // optional, default 5000ms
 })
 
-// conn.capabilities is a full IdeCapabilities proxy
-// conn.availableMethods lists the methods the server exposes
+// conn exposes proxy providers as named fields:
+// conn.fileAccess, conn.definition, conn.diagnostics, etc.
+// conn.availableMethods lists all methods the server exposes
 
 const mcpServer = new McpServer({ name: 'my-mcp', version: '1.0.0' })
-installMcpLspDriver({ server: mcpServer, capabilities: conn.capabilities })
+
+if (conn.fileAccess) install(mcpServer, conn.fileAccess)
+if (conn.definition && conn.fileAccess)
+  install(mcpServer, conn.definition, { fileAccess: conn.fileAccess })
+if (conn.diagnostics && conn.fileAccess)
+  install(mcpServer, conn.diagnostics, { fileAccess: conn.fileAccess })
+// Install whichever proxy providers are available
 
 // When done:
 conn.disconnect()
 ```
 
-The handshake automatically discovers which providers the server exposes and builds typed proxies. Change notifications (`onDiagnosticsChanged`, `onFileChanged`) are forwarded as push notifications to all connected clients. Multiple clients can connect to the same pipe simultaneously.
+The handshake automatically discovers which providers the server exposes and builds typed proxies. Change notifications are forwarded as push notifications to all connected clients. Multiple clients can connect to the same pipe simultaneously.
 
 ## LSP Client (Built-in)
 
@@ -403,7 +362,8 @@ For standalone MCP servers that need to communicate directly with an LSP server 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { createLspClient, installMcpLspDriver } from 'mcp-lsp-driver'
+import { createLspClient } from 'mcp-lsp-driver'
+import { install } from 'mcp-lsp-driver/mcp'
 import * as fs from 'fs/promises'
 
 // 1. Create and start the LSP client
@@ -416,26 +376,24 @@ const lsp = createLspClient({
 
 await lsp.start()
 
-// 2. Wire capabilities into MCP
+// 2. Wire providers into MCP
 const server = new McpServer({ name: 'my-mcp', version: '1.0.0' })
-installMcpLspDriver({
-  server,
-  capabilities: {
-    fileAccess: {
-      readFile: (uri) => fs.readFile(uri, 'utf-8'),
-      readDirectory: async () => [],
-    },
-    // Providers are automatically created based on server capabilities
-    definition: lsp.definition,
-    references: lsp.references,
-    hierarchy: lsp.hierarchy,
-    outline: lsp.outline,
-    diagnostics: {
-      ...lsp.diagnostics,
-      onDiagnosticsChanged: lsp.onDiagnosticsChanged,
-    },
-  },
-})
+
+const fileAccess = {
+  readFile: (uri: string) => fs.readFile(uri, 'utf-8'),
+  readDirectory: async () => [],
+}
+
+// Providers are automatically created based on server capabilities
+install(server, fileAccess)
+if (lsp.definition) install(server, lsp.definition, { fileAccess })
+if (lsp.references) install(server, lsp.references, { fileAccess })
+if (lsp.hierarchy)  install(server, lsp.hierarchy,  { fileAccess })
+if (lsp.outline)    install(server, lsp.outline,    { fileAccess })
+install(server, {
+  ...lsp.diagnostics,
+  onDiagnosticsChanged: lsp.onDiagnosticsChanged,
+}, { fileAccess })
 
 const transport = new StdioServerTransport()
 await server.connect(transport)

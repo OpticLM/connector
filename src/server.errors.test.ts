@@ -1,38 +1,34 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DefinitionProvider, IdeCapabilities } from './capabilities.js'
+import type { DefinitionProvider } from './capabilities.js'
 import {
   createMockDefinitionProvider,
   createMockFileAccess,
   createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
+import { install } from './mcp/index.js'
 
 describe('error handling', () => {
   it('should handle SymbolResolutionError gracefully', () => {
     const server = createMockServer()
     const definitionProvider = createMockDefinitionProvider()
     const files = { 'test.ts': 'const foo = 1;' }
+    const fileAccess = createMockFileAccess(files)
 
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      definition: definitionProvider,
-    }
-
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, fileAccess)
+      install(server, definitionProvider, { fileAccess })
+    }).not.toThrow()
   })
 
   it('should handle file read errors', () => {
     const server = createMockServer()
     const definitionProvider = createMockDefinitionProvider()
+    const fileAccess = createMockFileAccess({}) // No files
 
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess({}), // No files
-      definition: definitionProvider,
-    }
-
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, fileAccess)
+      install(server, definitionProvider, { fileAccess })
+    }).not.toThrow()
   })
 
   it('should handle provider errors', () => {
@@ -44,12 +40,11 @@ describe('error handling', () => {
     }
 
     const files = { 'test.ts': 'const foo = 1;' }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      definition: definitionProvider,
-    }
+    const fileAccess = createMockFileAccess(files)
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, fileAccess)
+      install(server, definitionProvider, { fileAccess })
+    }).not.toThrow()
   })
 })

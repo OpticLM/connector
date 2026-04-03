@@ -1,11 +1,30 @@
 import { unlinkSync } from 'node:fs'
 import { createServer } from 'node:net'
-import type { IdeCapabilities } from './capabilities.js'
+import type {
+  DefinitionProvider,
+  DiagnosticsProvider,
+  FrontmatterProvider,
+  GlobalFindProvider,
+  GraphProvider,
+  HierarchyProvider,
+  OutlineProvider,
+  ReferencesProvider,
+} from './capabilities.js'
+import type { EditProvider, FileAccessProvider } from './interfaces.js'
 import { PipeTransport, PROVIDER_METHODS, toPipePath } from './pipe-protocol.js'
 
-export interface ServeLspPipeOptions {
-  capabilities: IdeCapabilities
+export interface servePipeOptions {
   pipeName: string
+  fileAccess: FileAccessProvider
+  edit?: EditProvider
+  definition?: DefinitionProvider
+  references?: ReferencesProvider
+  hierarchy?: HierarchyProvider
+  diagnostics?: DiagnosticsProvider
+  outline?: OutlineProvider
+  globalFind?: GlobalFindProvider
+  graph?: GraphProvider
+  frontmatter?: FrontmatterProvider
 }
 
 export interface LspPipeServer {
@@ -16,20 +35,20 @@ export interface LspPipeServer {
 
 type MethodHandler = (...args: unknown[]) => Promise<unknown>
 
-export function serveLspPipe(
-  options: ServeLspPipeOptions,
-): Promise<LspPipeServer> {
-  const { capabilities, pipeName } = options
+export function servePipe(options: servePipeOptions): Promise<LspPipeServer> {
+  const { pipeName } = options
   const pipePath = toPipePath(pipeName)
 
-  // Build method dispatch registry from capabilities
+  // Build method dispatch registry from providers
   const registry = new Map<string, MethodHandler>()
 
   for (const { providerKey, methods } of PROVIDER_METHODS) {
-    const provider = capabilities[providerKey]
+    const provider = options[providerKey as keyof servePipeOptions] as
+      | Record<string, unknown>
+      | undefined
     if (!provider) continue
     for (const method of methods) {
-      const fn = (provider as Record<string, unknown>)[method]
+      const fn = provider[method]
       if (typeof fn === 'function') {
         const wireMethod = `${providerKey}.${method}`
         registry.set(wireMethod, (...args: unknown[]) =>
@@ -41,10 +60,10 @@ export function serveLspPipe(
 
   // Pre-compute handshake response
   const availableMethods = [...registry.keys()]
-  if (capabilities.diagnostics?.onDiagnosticsChanged) {
+  if (options.diagnostics?.onDiagnosticsChanged) {
     availableMethods.push('onDiagnosticsChanged')
   }
-  if (capabilities.fileAccess.onFileChanged) {
+  if (options.fileAccess.onFileChanged) {
     availableMethods.push('onFileChanged')
   }
 
@@ -68,8 +87,8 @@ export function serveLspPipe(
   })
 
   // Register diagnostics push notifications
-  if (capabilities.diagnostics?.onDiagnosticsChanged) {
-    capabilities.diagnostics.onDiagnosticsChanged((uri) => {
+  if (options.diagnostics?.onDiagnosticsChanged) {
+    options.diagnostics.onDiagnosticsChanged((uri) => {
       for (const transport of connections) {
         transport.sendNotification('onDiagnosticsChanged', [uri])
       }
@@ -77,8 +96,8 @@ export function serveLspPipe(
   }
 
   // Register file change push notifications
-  if (capabilities.fileAccess.onFileChanged) {
-    capabilities.fileAccess.onFileChanged((uri) => {
+  if (options.fileAccess.onFileChanged) {
+    options.fileAccess.onFileChanged((uri) => {
       for (const transport of connections) {
         transport.sendNotification('onFileChanged', [uri])
       }

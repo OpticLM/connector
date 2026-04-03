@@ -12,6 +12,10 @@
     "./lsp": {
       "types": "./dist/lsp/index.d.ts",
       "default": "./dist/lsp/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "default": "./dist/mcp/index.js"
     }
   },
   "files": ["dist/**/*.js", "dist/**/*.d.ts", "LICENSE"],

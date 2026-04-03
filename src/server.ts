@@ -1,8 +1,8 @@
 /**
  * MCP Server Implementation for LSP Driver SDK
  *
- * The SDK automatically registers tools based on which capability providers
- * are defined in the IdeCapabilities configuration.
+ * Registration functions for installing individual providers as MCP tools/resources.
+ * Each function accepts the specific provider type it needs.
  */
 
 import {
@@ -10,7 +10,16 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import type { IdeCapabilities } from './capabilities.js'
+import type {
+  DefinitionProvider,
+  DiagnosticsProvider,
+  FrontmatterProvider,
+  GlobalFindProvider,
+  GraphProvider,
+  HierarchyProvider,
+  OutlineProvider,
+  ReferencesProvider,
+} from './capabilities.js'
 import {
   formatDiagnosticsAsMarkdown,
   formatSymbolsAsMarkdown,
@@ -24,7 +33,7 @@ import {
   parseHashlineRef,
   toNumberedLines,
 } from './hashline.js'
-import type { FileAccessProvider } from './interfaces.js'
+import type { EditProvider, FileAccessProvider } from './interfaces.js'
 
 /**
  * Parses a line range fragment from a URI (e.g., "#L21" or "#L21-L28").
@@ -68,7 +77,7 @@ function parseQueryParams(path: string): {
  * Splits the input into directory + prefix, reads the directory,
  * and returns entries matching the prefix.
  */
-function createFileCompleter(
+export function createFileCompleter(
   readDirectory: FileAccessProvider['readDirectory'],
 ): (value: string) => Promise<string[]> {
   return async (value: string): Promise<string[]> => {
@@ -108,134 +117,16 @@ import type {
   PendingEditOperation,
 } from './types.js'
 
-// ============================================================================
-// McpLspDriver Class
-// ============================================================================
-
-/**
- * Configuration options for the MCP LSP Driver.
- */
-export interface McpLspDriverConfig {
-  /** Configuration for the symbol resolver */
-  resolverConfig?: ResolverConfig
-}
-
-/**
- * Register LSP-based tools and resources on the provided MCP server.
- */
-export function installMcpLspDriver({
-  server,
-  capabilities,
-  config,
-}: {
-  server: McpServer
-  capabilities: IdeCapabilities
-  config?: McpLspDriverConfig
-}) {
-  const resolver = new SymbolResolver(
-    capabilities.fileAccess,
-    config?.resolverConfig,
-  )
-
-  try {
-    registerTools(server, capabilities, resolver)
-  } catch (error) {
-    return {
-      success: false,
-      error,
-      reason: 'Error occured during registration of tools',
-    }
-  }
-
-  try {
-    registerResources(server, capabilities)
-  } catch (error) {
-    return {
-      success: false,
-      error,
-      reason: 'Error occured during registration of resources',
-    }
-  }
-
-  return {
-    success: true,
-  }
-}
-
-function registerTools(
-  server: McpServer,
-  capabilities: IdeCapabilities,
-  resolver: SymbolResolver,
-): void {
-  if (capabilities.definition) {
-    registerGotoDefinitionTool(server, capabilities, resolver)
-  }
-
-  if (capabilities.definition?.provideTypeDefinition) {
-    registerGotoTypeDefinitionTool(server, capabilities, resolver)
-  }
-
-  if (capabilities.references) {
-    registerFindReferencesTool(server, capabilities, resolver)
-  }
-
-  if (capabilities.hierarchy) {
-    registerCallHierarchyTool(server, capabilities, resolver)
-  }
-
-  if (capabilities.edit) {
-    registerApplyEditTool(server, capabilities)
-  }
-
-  if (capabilities.globalFind) {
-    registerGlobalFindTool(server, capabilities)
-  }
-
-  if (capabilities.graph) {
-    registerGetLinkStructureTool(server, capabilities)
-    registerAddLinkTool(server, capabilities)
-  }
-
-  if (capabilities.frontmatter) {
-    registerGetFrontmatterStructureTool(server, capabilities)
-    registerSetFrontmatterTool(server, capabilities)
-  }
-}
-
-function registerResources(
-  server: McpServer,
-  capabilities: IdeCapabilities,
-): void {
-  registerFilesystemResource(server, capabilities)
-
-  if (capabilities.diagnostics) {
-    registerDiagnosticsResources(server, capabilities)
-  }
-
-  if (capabilities.outline) {
-    registerOutlineResource(server, capabilities)
-  }
-
-  if (capabilities.graph) {
-    registerGraphResources(server, capabilities)
-  }
-
-  if (capabilities.frontmatter) {
-    registerFrontmatterResource(server, capabilities)
-  }
-}
+export type { ResolverConfig }
 
 /**
  * Registers the goto_definition tool.
  */
-function registerGotoDefinitionTool(
+export function registerGotoDefinitionTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: DefinitionProvider,
   resolver: SymbolResolver,
 ): void {
-  const definitionProvider = capabilities.definition
-  if (!definitionProvider) return
-
   server.registerTool(
     'goto_definition',
     {
@@ -263,7 +154,7 @@ function registerGotoDefinitionTool(
 
         const exactPosition = await resolver.resolvePosition(uri, fuzzy)
         const snippets = (
-          await definitionProvider.provideDefinition(uri, exactPosition)
+          await provider.provideDefinition(uri, exactPosition)
         ).map((snippet) => ({
           uri: snippet.uri,
           startLine: snippet.range.start.line + 1,
@@ -290,12 +181,12 @@ function registerGotoDefinitionTool(
 /**
  * Registers the goto_type_definition tool.
  */
-function registerGotoTypeDefinitionTool(
+export function registerGotoTypeDefinitionTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: DefinitionProvider,
   resolver: SymbolResolver,
 ): void {
-  const typeDefinitionProvider = capabilities.definition?.provideTypeDefinition
+  const typeDefinitionProvider = provider.provideTypeDefinition
   if (!typeDefinitionProvider) return
 
   server.registerTool(
@@ -352,14 +243,11 @@ function registerGotoTypeDefinitionTool(
 /**
  * Registers the find_references tool.
  */
-function registerFindReferencesTool(
+export function registerFindReferencesTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: ReferencesProvider,
   resolver: SymbolResolver,
 ): void {
-  const referencesProvider = capabilities.references
-  if (!referencesProvider) return
-
   server.registerTool(
     'find_references',
     {
@@ -388,7 +276,7 @@ function registerFindReferencesTool(
 
         const exactPosition = await resolver.resolvePosition(uri, fuzzy)
         const snippets = (
-          await referencesProvider.provideReferences(uri, exactPosition)
+          await provider.provideReferences(uri, exactPosition)
         ).map((snippet) => ({
           uri: snippet.uri,
           startLine: snippet.range.start.line + 1,
@@ -415,14 +303,11 @@ function registerFindReferencesTool(
 /**
  * Registers the call_hierarchy tool.
  */
-function registerCallHierarchyTool(
+export function registerCallHierarchyTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: HierarchyProvider,
   resolver: SymbolResolver,
 ): void {
-  const hierarchyProvider = capabilities.hierarchy
-  if (!hierarchyProvider) return
-
   server.registerTool(
     'call_hierarchy',
     {
@@ -451,7 +336,7 @@ function registerCallHierarchyTool(
 
         const exactPosition = await resolver.resolvePosition(uri, fuzzy)
         const snippets = (
-          await hierarchyProvider.provideCallHierarchy(
+          await provider.provideCallHierarchy(
             uri,
             exactPosition,
             params.direction,
@@ -484,20 +369,16 @@ function registerCallHierarchyTool(
  * - diagnostics://{path} - diagnostics for a specific file
  * - diagnostics://workspace - diagnostics for the entire workspace (if getWorkspaceDiagnostics is provided)
  */
-function registerDiagnosticsResources(
+export function registerDiagnosticsResources(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: DiagnosticsProvider,
+  fileCompleter?: (value: string) => Promise<string[]>,
 ): void {
-  const diagnosticsProvider = capabilities.diagnostics
-  if (!diagnosticsProvider) return
-
   const fileDiagnosticsTemplate = new ResourceTemplate(
     'diagnostics://{+path}',
     {
       list: undefined, // Cannot enumerate all files with diagnostics
-      complete: {
-        path: createFileCompleter(capabilities.fileAccess.readDirectory),
-      },
+      complete: fileCompleter ? { path: fileCompleter } : undefined,
     },
   )
 
@@ -513,8 +394,7 @@ function registerDiagnosticsResources(
       try {
         const path = variables.path as string
         const normalizedPath = normalizeUri(path)
-        const diagnostics =
-          await diagnosticsProvider.provideDiagnostics(normalizedPath)
+        const diagnostics = await provider.provideDiagnostics(normalizedPath)
         const markdown = formatDiagnosticsAsMarkdown(diagnostics)
 
         return {
@@ -542,9 +422,9 @@ function registerDiagnosticsResources(
   )
 
   // Register workspace diagnostics resource if getWorkspaceDiagnostics is provided
-  if (diagnosticsProvider.getWorkspaceDiagnostics) {
+  if (provider.getWorkspaceDiagnostics) {
     const getWorkspaceDiagnostics =
-      diagnosticsProvider.getWorkspaceDiagnostics.bind(diagnosticsProvider)
+      provider.getWorkspaceDiagnostics.bind(provider)
 
     server.registerResource(
       'workspace-diagnostics',
@@ -612,15 +492,15 @@ function registerDiagnosticsResources(
   }
 
   // Set up subscription support if onDiagnosticsChanged is provided
-  if (diagnosticsProvider.onDiagnosticsChanged) {
-    diagnosticsProvider.onDiagnosticsChanged((uri) => {
+  if (provider.onDiagnosticsChanged) {
+    provider.onDiagnosticsChanged((uri) => {
       // Notify MCP clients that the diagnostics resource has been updated
       const normalizedUri = normalizeUri(uri)
       server.server.sendResourceUpdated({
         uri: `diagnostics://${normalizedUri}`,
       })
       // Also notify workspace diagnostics if it exists
-      if (diagnosticsProvider.getWorkspaceDiagnostics) {
+      if (provider.getWorkspaceDiagnostics) {
         server.server.sendResourceUpdated({
           uri: 'diagnostics://workspace',
         })
@@ -633,18 +513,14 @@ function registerDiagnosticsResources(
  * Registers the outline resource.
  * - outline://{path} - document symbols (outline) for a specific file
  */
-function registerOutlineResource(
+export function registerOutlineResource(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: OutlineProvider,
+  fileCompleter?: (value: string) => Promise<string[]>,
 ): void {
-  const outlineProvider = capabilities.outline
-  if (!outlineProvider) return
-
   const outlineTemplate = new ResourceTemplate('outline://{+path}', {
     list: undefined,
-    complete: {
-      path: createFileCompleter(capabilities.fileAccess.readDirectory),
-    },
+    complete: fileCompleter ? { path: fileCompleter } : undefined,
   })
 
   server.registerResource(
@@ -659,8 +535,7 @@ function registerOutlineResource(
       try {
         const path = variables.path as string
         const normalizedPath = normalizeUri(path)
-        const symbols =
-          await outlineProvider.provideDocumentSymbols(normalizedPath)
+        const symbols = await provider.provideDocumentSymbols(normalizedPath)
         const markdown = formatSymbolsAsMarkdown(symbols)
 
         return {
@@ -691,20 +566,16 @@ function registerOutlineResource(
 /**
  * Registers the apply_edit tool using hashline-based line references.
  */
-function registerApplyEditTool(
+export function registerApplyEditTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: EditProvider,
+  readFile: FileAccessProvider['readFile'],
 ): void {
-  const editProvider = capabilities.edit
-  if (!editProvider) return
-
   // Get the appropriate edit function (prefer previewAndApplyEdits over applyEdits)
   const applyEditsFn =
-    editProvider.previewAndApplyEdits?.bind(editProvider) ??
-    editProvider.applyEdits?.bind(editProvider)
+    provider.previewAndApplyEdits?.bind(provider) ??
+    provider.applyEdits?.bind(provider)
   if (!applyEditsFn) return
-
-  const { readFile } = capabilities.fileAccess
 
   server.registerTool(
     'apply_edit',
@@ -827,11 +698,11 @@ function registerApplyEditTool(
  * - files://path/to/file.ext#L21 - read specific line
  * - files://path/to/file.ext#L21-L28 - read line range
  */
-function registerFilesystemResource(
+export function registerFilesystemResource(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: FileAccessProvider,
 ): void {
-  const { readFile, readDirectory } = capabilities.fileAccess
+  const { readFile, readDirectory } = provider
 
   const filesystemTemplate = new ResourceTemplate('files://{+path}', {
     list: undefined, // Cannot enumerate all directories
@@ -947,8 +818,8 @@ function registerFilesystemResource(
   )
 
   // Set up subscription support if onFileChanged is provided
-  if (capabilities.fileAccess.onFileChanged) {
-    capabilities.fileAccess.onFileChanged((uri) => {
+  if (provider.onFileChanged) {
+    provider.onFileChanged((uri) => {
       const normalizedUri = normalizeUri(uri)
       server.server.sendResourceUpdated({
         uri: `files://${normalizedUri}`,
@@ -960,13 +831,10 @@ function registerFilesystemResource(
 /**
  * Registers the global_find tool.
  */
-function registerGlobalFindTool(
+export function registerGlobalFindTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: GlobalFindProvider,
 ): void {
-  const globalFindProvider = capabilities.globalFind
-  if (!globalFindProvider) return
-
   server.registerTool(
     'global_find',
     {
@@ -991,7 +859,7 @@ function registerGlobalFindTool(
         const exactMatch = params.exact_match ?? false
         const regexMode = params.regex_mode ?? false
 
-        const matches = await globalFindProvider.globalFind(params.query, {
+        const matches = await provider.globalFind(params.query, {
           caseSensitive,
           exactMatch,
           regexMode,
@@ -1015,18 +883,14 @@ function registerGlobalFindTool(
  * - outlinks://{path} - outgoing links from a specific file
  * - backlinks://{path} - incoming links (backlinks) to a specific file
  */
-function registerGraphResources(
+export function registerGraphResources(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: GraphProvider,
+  fileCompleter?: (value: string) => Promise<string[]>,
 ): void {
-  const graphProvider = capabilities.graph
-  if (!graphProvider) return
-
   const outlinksTemplate = new ResourceTemplate('outlinks://{+path}', {
     list: undefined, // Cannot enumerate all files
-    complete: {
-      path: createFileCompleter(capabilities.fileAccess.readDirectory),
-    },
+    complete: fileCompleter ? { path: fileCompleter } : undefined,
   })
 
   server.registerResource(
@@ -1041,7 +905,7 @@ function registerGraphResources(
       try {
         const path = variables.path as string
         const normalizedPath = normalizeUri(path)
-        const links = await graphProvider.resolveOutlinks(normalizedPath)
+        const links = await provider.resolveOutlinks(normalizedPath)
 
         return {
           contents: [
@@ -1069,9 +933,7 @@ function registerGraphResources(
 
   const backlinksTemplate = new ResourceTemplate('backlinks://{+path}', {
     list: undefined, // Cannot enumerate all files
-    complete: {
-      path: createFileCompleter(capabilities.fileAccess.readDirectory),
-    },
+    complete: fileCompleter ? { path: fileCompleter } : undefined,
   })
 
   server.registerResource(
@@ -1086,7 +948,7 @@ function registerGraphResources(
       try {
         const path = variables.path as string
         const normalizedPath = normalizeUri(path)
-        const links = await graphProvider.resolveBacklinks(normalizedPath)
+        const links = await provider.resolveBacklinks(normalizedPath)
 
         return {
           contents: [
@@ -1116,13 +978,10 @@ function registerGraphResources(
 /**
  * Registers the get_link_structure tool.
  */
-function registerGetLinkStructureTool(
+export function registerGetLinkStructureTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: GraphProvider,
 ): void {
-  const graphProvider = capabilities.graph
-  if (!graphProvider) return
-
   server.registerTool(
     'get_link_structure',
     {
@@ -1145,7 +1004,7 @@ function registerGetLinkStructureTool(
     },
     async () => {
       try {
-        const links = await graphProvider.getLinkStructure()
+        const links = await provider.getLinkStructure()
         return makeToolResult({ links })
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -1162,13 +1021,10 @@ function registerGetLinkStructureTool(
 /**
  * Registers the add_link tool.
  */
-function registerAddLinkTool(
+export function registerAddLinkTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: GraphProvider,
 ): void {
-  const graphProvider = capabilities.graph
-  if (!graphProvider) return
-
   server.registerTool(
     'add_link',
     {
@@ -1184,7 +1040,7 @@ function registerAddLinkTool(
       try {
         const path = normalizeUri(params.path)
         const linkTo = normalizeUri(params.link_to)
-        await graphProvider.addLink(path, params.pattern, linkTo)
+        await provider.addLink(path, params.pattern, linkTo)
 
         return makeToolResult({
           success: true,
@@ -1208,13 +1064,10 @@ function registerAddLinkTool(
 /**
  * Registers the get_frontmatter_structure tool.
  */
-function registerGetFrontmatterStructureTool(
+export function registerGetFrontmatterStructureTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: FrontmatterProvider,
 ): void {
-  const frontmatterProvider = capabilities.frontmatter
-  if (!frontmatterProvider) return
-
   server.registerTool(
     'get_frontmatter_structure',
     {
@@ -1233,7 +1086,7 @@ function registerGetFrontmatterStructureTool(
     async (params) => {
       try {
         const path = params.path ? normalizeUri(params.path) : undefined
-        const matches = await frontmatterProvider.getFrontmatterStructure(
+        const matches = await provider.getFrontmatterStructure(
           params.property,
           path,
         )
@@ -1254,13 +1107,10 @@ function registerGetFrontmatterStructureTool(
 /**
  * Registers the set_frontmatter tool.
  */
-function registerSetFrontmatterTool(
+export function registerSetFrontmatterTool(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: FrontmatterProvider,
 ): void {
-  const frontmatterProvider = capabilities.frontmatter
-  if (!frontmatterProvider) return
-
   server.registerTool(
     'set_frontmatter',
     {
@@ -1277,7 +1127,7 @@ function registerSetFrontmatterTool(
         const path = normalizeUri(params.path)
         // Convert null to undefined for the provider
         const value = params.value === null ? undefined : params.value
-        await frontmatterProvider.setFrontmatter(path, params.property, value)
+        await provider.setFrontmatter(path, params.property, value)
 
         return makeToolResult({
           success: true,
@@ -1302,18 +1152,14 @@ function registerSetFrontmatterTool(
  * Registers the frontmatter resource.
  * - frontmatter://{path} - frontmatter for a specific file
  */
-function registerFrontmatterResource(
+export function registerFrontmatterResource(
   server: McpServer,
-  capabilities: IdeCapabilities,
+  provider: FrontmatterProvider,
+  fileCompleter?: (value: string) => Promise<string[]>,
 ): void {
-  const frontmatterProvider = capabilities.frontmatter
-  if (!frontmatterProvider) return
-
   const frontmatterTemplate = new ResourceTemplate('frontmatter://{+path}', {
     list: undefined, // Cannot enumerate all files
-    complete: {
-      path: createFileCompleter(capabilities.fileAccess.readDirectory),
-    },
+    complete: fileCompleter ? { path: fileCompleter } : undefined,
   })
 
   server.registerResource(
@@ -1328,8 +1174,7 @@ function registerFrontmatterResource(
       try {
         const path = variables.path as string
         const normalizedPath = normalizeUri(path)
-        const frontmatter =
-          await frontmatterProvider.getFrontmatter(normalizedPath)
+        const frontmatter = await provider.getFrontmatter(normalizedPath)
 
         return {
           contents: [

@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { GraphProvider, IdeCapabilities } from './capabilities.js'
+import type { GraphProvider } from './capabilities.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
   createMockGraphProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
 import type { Link } from './types.js'
+import { install } from './mcp/index.js'
 
 describe('graph capability', () => {
   const mockLinks: Link[] = [
@@ -52,25 +52,19 @@ describe('graph capability', () => {
   it('should register graph tools when graph provider is available', () => {
     const server = createMockServer()
     const graphProvider = createMockGraphProvider()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, createMockFileAccess())
+      install(server, graphProvider)
+    }).not.toThrow()
   })
 
   it('should register get_link_structure tool and return all links', async () => {
     const server = createMockServer()
     const graphProvider = createMockGraphProvider(mockLinks)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -87,13 +81,9 @@ describe('graph capability', () => {
   it('should handle get_link_structure with empty links', async () => {
     const server = createMockServer()
     const graphProvider = createMockGraphProvider([])
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -109,13 +99,9 @@ describe('graph capability', () => {
   it('should register add_link tool and return success when link is added', async () => {
     const server = createMockServer()
     const graphProvider = createMockGraphProvider([])
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -144,13 +130,9 @@ describe('graph capability', () => {
       [],
       new Error('Pattern not found in document'),
     )
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -192,13 +174,9 @@ describe('graph capability', () => {
       },
     ]
     const graphProvider = createMockGraphProvider(outlinks)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -234,13 +212,9 @@ describe('graph capability', () => {
       },
     ]
     const graphProvider = createMockGraphProvider(backlinks)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -262,13 +236,9 @@ describe('graph capability', () => {
   it('should handle outlinks resource with no outgoing links', async () => {
     const server = createMockServer()
     const graphProvider = createMockGraphProvider([])
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -287,13 +257,9 @@ describe('graph capability', () => {
   it('should handle backlinks resource with no incoming links', async () => {
     const server = createMockServer()
     const graphProvider = createMockGraphProvider([])
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -318,13 +284,9 @@ describe('graph capability', () => {
       resolveBacklinks: vi.fn(async () => []),
       addLink: vi.fn(async () => {}),
     }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -348,13 +310,9 @@ describe('graph capability', () => {
         throw new Error('Failed to write file')
       }),
     }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({
@@ -383,13 +341,9 @@ describe('graph capability', () => {
       resolveBacklinks: vi.fn(async () => []),
       addLink: vi.fn(async () => {}),
     }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -414,13 +368,9 @@ describe('graph capability', () => {
       }),
       addLink: vi.fn(async () => {}),
     }
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.readResource({
@@ -437,14 +387,12 @@ describe('graph capability', () => {
 
   it('should include graph provider in instance with all capabilities', () => {
     const server = createMockServer()
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      globalFind: createMockGlobalFindProvider(),
-      graph: createMockGraphProvider(),
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, createMockFileAccess())
+      install(server, createMockGlobalFindProvider())
+      install(server, createMockGraphProvider())
+    }).not.toThrow()
   })
 
   it('should preserve link properties including subpath and resolved status', async () => {
@@ -470,13 +418,9 @@ describe('graph capability', () => {
       },
     ]
     const graphProvider = createMockGraphProvider(linksWithSubpath)
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      graph: graphProvider,
-    }
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    install(server, createMockFileAccess())
+    install(server, graphProvider)
 
     const client = await createAndConnectMockClient(server)
     const r = await client.callTool({

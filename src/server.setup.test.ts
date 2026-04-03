@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type {
-  IdeCapabilities,
-  OnDiagnosticsChangedCallback,
-} from './capabilities.js'
+import type { OnDiagnosticsChangedCallback } from './capabilities.js'
 import {
   createMockDefinitionProvider,
   createMockDiagnosticsProvider,
@@ -13,67 +10,52 @@ import {
   createMockReferencesProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { installMcpLspDriver } from './server.js'
 import type { Diagnostic, DocumentSymbol } from './types.js'
+import { install } from './mcp/index.js'
 
 describe('McpLspDriver', () => {
   describe('constructor', () => {
     it('should create instance with minimal capabilities', () => {
       const server = createMockServer()
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-      }
+      const fileAccess = createMockFileAccess()
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      expect(() => install(server, fileAccess)).not.toThrow()
     })
 
     it('should create instance with all capabilities', () => {
       const server = createMockServer()
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        edit: createMockEditProvider(),
-        definition: createMockDefinitionProvider(),
-        references: createMockReferencesProvider(),
-        hierarchy: createMockHierarchyProvider(),
-        diagnostics: createMockDiagnosticsProvider(),
-        outline: createMockOutlineProvider(),
-      }
+      const fileAccess = createMockFileAccess()
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      expect(() => {
+        install(server, fileAccess)
+        install(server, createMockEditProvider(), { fileAccess })
+        install(server, createMockDefinitionProvider(), { fileAccess })
+        install(server, createMockReferencesProvider(), { fileAccess })
+        install(server, createMockHierarchyProvider(), { fileAccess })
+        install(server, createMockDiagnosticsProvider(), { fileAccess })
+        install(server, createMockOutlineProvider(), { fileAccess })
+      }).not.toThrow()
     })
 
     it('should accept resolver config', () => {
       const server = createMockServer()
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-      }
+      const fileAccess = createMockFileAccess()
 
-      const { success } = installMcpLspDriver({
-        server,
-        capabilities,
-        config: {
-          resolverConfig: {
-            lineSearchRadius: 5,
-          },
-        },
-      })
-
-      expect(success).toBeTruthy()
+      expect(() =>
+        install(server, createMockDefinitionProvider(), {
+          fileAccess,
+          resolverConfig: { lineSearchRadius: 5 },
+        }),
+      ).not.toThrow()
     })
   })
 
   describe('tool registration', () => {
     it('should not register tools when no optional capabilities are provided', () => {
       const server = createMockServer()
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-      }
+      const fileAccess = createMockFileAccess()
 
-      // McpLspDriver registers tools internally, we verify it doesn't throw
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      expect(() => install(server, fileAccess)).not.toThrow()
     })
 
     it('should register diagnostics resources and return formatted results', async () => {
@@ -92,13 +74,10 @@ describe('McpLspDriver', () => {
         },
       ]
       const diagnosticsProvider = createMockDiagnosticsProvider(diagnostics)
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        diagnostics: diagnosticsProvider,
-      }
+      const fileAccess = createMockFileAccess()
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, fileAccess)
+      install(server, diagnosticsProvider, { fileAccess })
 
       // Verify the provider returns the expected diagnostics
       const result = await diagnosticsProvider.provideDiagnostics('test.ts')
@@ -134,13 +113,10 @@ describe('McpLspDriver', () => {
         [],
         workspaceDiagnostics,
       )
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        diagnostics: diagnosticsProvider,
-      }
+      const fileAccess = createMockFileAccess()
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, fileAccess)
+      install(server, diagnosticsProvider, { fileAccess })
 
       // Verify workspace diagnostics can be retrieved
       if (diagnosticsProvider.getWorkspaceDiagnostics) {
@@ -194,13 +170,10 @@ describe('McpLspDriver', () => {
         },
       ]
       const outlineProvider = createMockOutlineProvider(symbols)
-      const capabilities: IdeCapabilities = {
-        fileAccess: createMockFileAccess(),
-        outline: outlineProvider,
-      }
+      const fileAccess = createMockFileAccess()
 
-      const { success } = installMcpLspDriver({ server, capabilities })
-      expect(success).toBeTruthy()
+      install(server, fileAccess)
+      install(server, outlineProvider, { fileAccess })
 
       // Verify the outline provider returns the expected symbols
       const result = await outlineProvider.provideDocumentSymbols('test.ts')
@@ -224,13 +197,10 @@ describe('diagnostics subscription', () => {
       registeredCallback = callback
     }
 
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(),
-      diagnostics: diagnosticsProvider,
-    }
+    const fileAccess = createMockFileAccess()
+    install(server, fileAccess)
+    install(server, diagnosticsProvider, { fileAccess })
 
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
     expect(registeredCallback).toBeDefined()
   })
 })
@@ -240,27 +210,23 @@ describe('edit operations', () => {
     const server = createMockServer()
     const edit = createMockEditProvider(true)
     const files = { 'test.ts': 'const foo = 1;' }
+    const fileAccess = createMockFileAccess(files)
 
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      edit,
-    }
-
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, fileAccess)
+      install(server, edit, { fileAccess })
+    }).not.toThrow()
   })
 
   it('should handle user rejection of edits', () => {
     const server = createMockServer()
     const edit = createMockEditProvider(false)
     const files = { 'test.ts': 'const foo = 1;' }
+    const fileAccess = createMockFileAccess(files)
 
-    const capabilities: IdeCapabilities = {
-      fileAccess: createMockFileAccess(files),
-      edit,
-    }
-
-    const { success } = installMcpLspDriver({ server, capabilities })
-    expect(success).toBeTruthy()
+    expect(() => {
+      install(server, fileAccess)
+      install(server, edit, { fileAccess })
+    }).not.toThrow()
   })
 })
