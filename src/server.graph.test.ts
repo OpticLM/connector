@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { GraphProvider } from './capabilities.js'
+import { install } from './mcp/index.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
@@ -7,7 +8,6 @@ import {
   createMockServer,
 } from './server.fixtures.js'
 import type { Link } from './types.js'
-import { install } from './mcp/index.js'
 
 describe('graph capability', () => {
   const mockLinks: Link[] = [

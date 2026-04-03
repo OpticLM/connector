@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { DefinitionProvider } from './capabilities.js'
+import { install } from './mcp/index.js'
 import {
   createMockDefinitionProvider,
   createMockFileAccess,
   createMockServer,
 } from './server.fixtures.js'
-import { install } from './mcp/index.js'
 
 describe('error handling', () => {
   it('should handle SymbolResolutionError gracefully', () => {

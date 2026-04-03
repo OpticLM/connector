@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { GlobalFindMatch } from './capabilities.js'
+import { install } from './mcp/index.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
   createMockGlobalFindProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { install } from './mcp/index.js'
 
 describe('global find and replace tools', () => {
   it('should register global_find tool when globalFind provider is available', () => {

@@ -8,6 +8,7 @@ A TypeScript SDK that bridges Language Server Protocol (LSP) capabilities with t
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [MCP Tools](#mcp-tools)
+- [Tool Callbacks](#tool-callbacks)
 - [MCP Resources](#mcp-resources)
 - [Auto-Complete for File Paths](#auto-complete-for-file-paths)
 - [Subscription and Change Notifications](#subscription-and-change-notifications)
@@ -144,6 +145,53 @@ Get frontmatter property values across documents.
 ### `set_frontmatter`
 
 Set a frontmatter property on a document.
+
+## Tool Callbacks
+
+Each provider with tools accepts optional `onInput` and `onOutput` callbacks in its install options. These fire synchronously around each tool invocation — `onInput` before processing, `onOutput` after a successful result (not on errors).
+
+Use them for logging, telemetry, or testing:
+
+```typescript
+import { install } from 'mcp-lsp-driver/mcp'
+
+// EditProvider — apply_edit
+install(server, editProvider, {
+  fileAccess,
+  onEditInput: (input) => {
+    console.log('edit requested:', input.uri, input.description)
+  },
+  onEditOutput: (output) => {
+    console.log('edit result:', output.success, output.message)
+  },
+})
+
+// DefinitionProvider — goto_definition + goto_type_definition
+install(server, definitionProvider, {
+  fileAccess,
+  onDefinitionInput: (input) => log('goto_definition', input),
+  onDefinitionOutput: (output) => log('goto_definition result', output.snippets.length),
+  onTypeDefinitionInput: (input) => log('goto_type_definition', input),
+  onTypeDefinitionOutput: (output) => log('goto_type_definition result', output.snippets.length),
+})
+```
+
+### Callback reference
+
+| Provider | Tool | Input callback | Output callback |
+|----------|------|----------------|-----------------|
+| `EditProvider` | `apply_edit` | `onEditInput` | `onEditOutput` |
+| `DefinitionProvider` | `goto_definition` | `onDefinitionInput` | `onDefinitionOutput` |
+| `DefinitionProvider` | `goto_type_definition` | `onTypeDefinitionInput` | `onTypeDefinitionOutput` |
+| `ReferencesProvider` | `find_references` | `onReferencesInput` | `onReferencesOutput` |
+| `HierarchyProvider` | `call_hierarchy` | `onCallHierarchyInput` | `onCallHierarchyOutput` |
+| `GlobalFindProvider` | `global_find` | `onGlobalFindInput` | `onGlobalFindOutput` |
+| `GraphProvider` | `get_link_structure` | — | `onLinkStructureOutput` |
+| `GraphProvider` | `add_link` | `onAddLinkInput` | `onAddLinkOutput` |
+| `FrontmatterProvider` | `get_frontmatter_structure` | `onFrontmatterStructureInput` | `onFrontmatterStructureOutput` |
+| `FrontmatterProvider` | `set_frontmatter` | `onSetFrontmatterInput` | `onSetFrontmatterOutput` |
+
+`get_link_structure` has no `onInput` since its input schema is empty. Resource-only providers (`FileAccessProvider`, `DiagnosticsProvider`, `OutlineProvider`) have no callbacks.
 
 ## MCP Resources
 

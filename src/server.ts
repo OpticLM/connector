@@ -14,6 +14,7 @@ import type {
   DefinitionProvider,
   DiagnosticsProvider,
   FrontmatterProvider,
+  GlobalFindMatch,
   GlobalFindProvider,
   GraphProvider,
   HierarchyProvider,
@@ -113,11 +114,22 @@ import {
 } from './schemas.js'
 import type {
   EditResult,
+  FrontmatterMatch,
   FuzzyPosition,
+  Link,
   PendingEditOperation,
 } from './types.js'
 
 export type { ResolverConfig }
+
+type SnippetOutput = {
+  snippets: Array<{
+    uri: string
+    startLine: number
+    endLine: number
+    content: string
+  }>
+}
 
 /**
  * Registers the goto_definition tool.
@@ -126,6 +138,10 @@ export function registerGotoDefinitionTool(
   server: McpServer,
   provider: DefinitionProvider,
   resolver: SymbolResolver,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof FuzzyPositionSchema>) => void
+    onOutput?: (output: SnippetOutput) => void
+  },
 ): void {
   server.registerTool(
     'goto_definition',
@@ -144,6 +160,7 @@ export function registerGotoDefinitionTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const uri = normalizeUri(params.uri)
         const fuzzy: FuzzyPosition = {
@@ -162,6 +179,7 @@ export function registerGotoDefinitionTool(
           content: snippet.content,
         }))
 
+        callbacks?.onOutput?.({ snippets })
         return makeToolResult({ snippets })
       } catch (error) {
         const message =
@@ -185,6 +203,10 @@ export function registerGotoTypeDefinitionTool(
   server: McpServer,
   provider: DefinitionProvider,
   resolver: SymbolResolver,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof FuzzyPositionSchema>) => void
+    onOutput?: (output: SnippetOutput) => void
+  },
 ): void {
   const typeDefinitionProvider = provider.provideTypeDefinition
   if (!typeDefinitionProvider) return
@@ -206,6 +228,7 @@ export function registerGotoTypeDefinitionTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const uri = normalizeUri(params.uri)
         const fuzzy: FuzzyPosition = {
@@ -224,6 +247,7 @@ export function registerGotoTypeDefinitionTool(
           }),
         )
 
+        callbacks?.onOutput?.({ snippets })
         return makeToolResult({ snippets })
       } catch (error) {
         const message =
@@ -247,6 +271,10 @@ export function registerFindReferencesTool(
   server: McpServer,
   provider: ReferencesProvider,
   resolver: SymbolResolver,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof FuzzyPositionSchema>) => void
+    onOutput?: (output: SnippetOutput) => void
+  },
 ): void {
   server.registerTool(
     'find_references',
@@ -266,6 +294,7 @@ export function registerFindReferencesTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const uri = normalizeUri(params.uri)
         const fuzzy: FuzzyPosition = {
@@ -284,6 +313,7 @@ export function registerFindReferencesTool(
           content: snippet.content,
         }))
 
+        callbacks?.onOutput?.({ snippets })
         return makeToolResult({ snippets })
       } catch (error) {
         const message =
@@ -307,6 +337,10 @@ export function registerCallHierarchyTool(
   server: McpServer,
   provider: HierarchyProvider,
   resolver: SymbolResolver,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof CallHierarchySchema>) => void
+    onOutput?: (output: SnippetOutput) => void
+  },
 ): void {
   server.registerTool(
     'call_hierarchy',
@@ -326,6 +360,7 @@ export function registerCallHierarchyTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const uri = normalizeUri(params.uri)
         const fuzzy: FuzzyPosition = {
@@ -348,6 +383,7 @@ export function registerCallHierarchyTool(
           content: snippet.content,
         }))
 
+        callbacks?.onOutput?.({ snippets })
         return makeToolResult({ snippets })
       } catch (error) {
         const message =
@@ -570,6 +606,10 @@ export function registerApplyEditTool(
   server: McpServer,
   provider: EditProvider,
   readFile: FileAccessProvider['readFile'],
+  callbacks?: {
+    onInput?: (input: z.infer<typeof ApplyEditSchema>) => void
+    onOutput?: (output: EditResult) => void
+  },
 ): void {
   // Get the appropriate edit function (prefer previewAndApplyEdits over applyEdits)
   const applyEditsFn =
@@ -601,6 +641,7 @@ export function registerApplyEditTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const uri = normalizeUri(params.uri)
 
@@ -675,6 +716,7 @@ export function registerApplyEditTool(
               message: 'Edit rejected by user.',
             }
 
+        callbacks?.onOutput?.(result)
         return makeToolResult(result)
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -834,6 +876,10 @@ export function registerFilesystemResource(
 export function registerGlobalFindTool(
   server: McpServer,
   provider: GlobalFindProvider,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof GlobalFindSchema>) => void
+    onOutput?: (output: { matches: GlobalFindMatch[]; count: number }) => void
+  },
 ): void {
   server.registerTool(
     'global_find',
@@ -854,6 +900,7 @@ export function registerGlobalFindTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const caseSensitive = params.case_sensitive ?? false
         const exactMatch = params.exact_match ?? false
@@ -865,6 +912,7 @@ export function registerGlobalFindTool(
           regexMode,
         })
 
+        callbacks?.onOutput?.({ count: matches.length, matches })
         return makeToolResult({ count: matches.length, matches })
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -981,6 +1029,9 @@ export function registerGraphResources(
 export function registerGetLinkStructureTool(
   server: McpServer,
   provider: GraphProvider,
+  callbacks?: {
+    onOutput?: (output: { links: Link[] }) => void
+  },
 ): void {
   server.registerTool(
     'get_link_structure',
@@ -1005,6 +1056,7 @@ export function registerGetLinkStructureTool(
     async () => {
       try {
         const links = await provider.getLinkStructure()
+        callbacks?.onOutput?.({ links })
         return makeToolResult({ links })
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -1024,6 +1076,10 @@ export function registerGetLinkStructureTool(
 export function registerAddLinkTool(
   server: McpServer,
   provider: GraphProvider,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof AddLinkSchema>) => void
+    onOutput?: (output: { success: boolean; message: string }) => void
+  },
 ): void {
   server.registerTool(
     'add_link',
@@ -1037,15 +1093,18 @@ export function registerAddLinkTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const path = normalizeUri(params.path)
         const linkTo = normalizeUri(params.link_to)
         await provider.addLink(path, params.pattern, linkTo)
 
-        return makeToolResult({
-          success: true,
+        const addLinkResult = {
+          success: true as const,
           message: 'Link added successfully.',
-        })
+        }
+        callbacks?.onOutput?.(addLinkResult)
+        return makeToolResult(addLinkResult)
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
         return {
@@ -1067,6 +1126,10 @@ export function registerAddLinkTool(
 export function registerGetFrontmatterStructureTool(
   server: McpServer,
   provider: FrontmatterProvider,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof GetFrontmatterStructureSchema>) => void
+    onOutput?: (output: { matches: FrontmatterMatch[] }) => void
+  },
 ): void {
   server.registerTool(
     'get_frontmatter_structure',
@@ -1084,6 +1147,7 @@ export function registerGetFrontmatterStructureTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const path = params.path ? normalizeUri(params.path) : undefined
         const matches = await provider.getFrontmatterStructure(
@@ -1091,6 +1155,7 @@ export function registerGetFrontmatterStructureTool(
           path,
         )
 
+        callbacks?.onOutput?.({ matches })
         return makeToolResult({ matches })
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
@@ -1110,6 +1175,10 @@ export function registerGetFrontmatterStructureTool(
 export function registerSetFrontmatterTool(
   server: McpServer,
   provider: FrontmatterProvider,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof SetFrontmatterSchema>) => void
+    onOutput?: (output: { success: boolean; message: string }) => void
+  },
 ): void {
   server.registerTool(
     'set_frontmatter',
@@ -1123,16 +1192,19 @@ export function registerSetFrontmatterTool(
       },
     },
     async (params) => {
+      callbacks?.onInput?.(params)
       try {
         const path = normalizeUri(params.path)
         // Convert null to undefined for the provider
         const value = params.value === null ? undefined : params.value
         await provider.setFrontmatter(path, params.property, value)
 
-        return makeToolResult({
-          success: true,
+        const setFrontmatterResult = {
+          success: true as const,
           message: 'Frontmatter updated successfully.',
-        })
+        }
+        callbacks?.onOutput?.(setFrontmatterResult)
+        return makeToolResult(setFrontmatterResult)
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`
         return {

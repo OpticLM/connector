@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
+import { install } from './mcp/index.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
   createMockOutlineProvider,
   createMockServer,
 } from './server.fixtures.js'
-import { install } from './mcp/index.js'
 
 describe('resource template file completion', () => {
   it('should complete file paths from root directory', async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { install } from './mcp/index.js'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
@@ -10,7 +11,6 @@ import {
   mockCodeSnippet,
 } from './server.fixtures.js'
 import type { CodeSnippet } from './types.js'
-import { install } from './mcp/index.js'
 
 describe('tool registration', () => {
   it('should register goto_definition when definition provider is available', async () => {
