@@ -1,6 +1,6 @@
-# MCP LSP Driver SDK
+# @opticlm/connector
 
-A TypeScript SDK that bridges Language Server Protocol (LSP) capabilities with the Model Context Protocol (MCP). Designed for IDE plugin developers building AI-assisted coding tools for VS Code, JetBrains, and other editors.
+Provides an abstract interface that allows LLMs to connect to fact sources such as LSPs, code diagnostics, symbol definitions/references, links, and frontmatter; currently includes an MCP implementation.
 
 ## Table of Contents
 
@@ -17,12 +17,6 @@ A TypeScript SDK that bridges Language Server Protocol (LSP) capabilities with t
 - [LSP Client (Built-in)](#lsp-client-built-in)
 - [Requirements](#requirements)
 - [License](#license)
-
-## Core Philosophy
-
-- **Fuzzy-to-Exact Resolution**: LLMs interact via semantic anchors (`symbolName`, `lineHint`), and the SDK resolves them to precise coordinates
-- **Disk-Based Truth**: All read operations reflect the state of files on disk, ignoring unsaved IDE buffers
-- **High Abstraction**: Beyond LSP, it also provides functionality related to something like dual chains (graph capability) and metadata (frontmatter capability).
 
 ## Installation
 
