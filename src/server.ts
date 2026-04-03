@@ -100,7 +100,7 @@ export function createFileCompleter(
 import {
   type ResolverConfig,
   SymbolResolutionError,
-  SymbolResolver,
+  type SymbolResolver,
 } from './resolver.js'
 import {
   AddLinkSchema,

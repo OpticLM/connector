@@ -134,20 +134,16 @@ export function connectPipe(
 
           settled = true
           resolve({
-            fileAccess: built['fileAccess'] as FileAccessProvider | undefined,
-            edit: built['edit'] as EditProvider | undefined,
-            definition: built['definition'] as DefinitionProvider | undefined,
-            references: built['references'] as ReferencesProvider | undefined,
-            hierarchy: built['hierarchy'] as HierarchyProvider | undefined,
-            diagnostics: built['diagnostics'] as
-              | DiagnosticsProvider
-              | undefined,
-            outline: built['outline'] as OutlineProvider | undefined,
-            globalFind: built['globalFind'] as GlobalFindProvider | undefined,
-            graph: built['graph'] as GraphProvider | undefined,
-            frontmatter: built['frontmatter'] as
-              | FrontmatterProvider
-              | undefined,
+            fileAccess: built.fileAccess as FileAccessProvider | undefined,
+            edit: built.edit as EditProvider | undefined,
+            definition: built.definition as DefinitionProvider | undefined,
+            references: built.references as ReferencesProvider | undefined,
+            hierarchy: built.hierarchy as HierarchyProvider | undefined,
+            diagnostics: built.diagnostics as DiagnosticsProvider | undefined,
+            outline: built.outline as OutlineProvider | undefined,
+            globalFind: built.globalFind as GlobalFindProvider | undefined,
+            graph: built.graph as GraphProvider | undefined,
+            frontmatter: built.frontmatter as FrontmatterProvider | undefined,
             availableMethods,
             disconnect() {
               transport.destroy()
