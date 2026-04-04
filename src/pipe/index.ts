@@ -9,5 +9,9 @@ export type {
   PipeConnection,
 } from './pipe-client.js'
 export { connectPipe } from './pipe-client.js'
-export type { PipeServer, servePipeOptions } from './pipe-server.js'
+export type {
+  PipeServer,
+  ProviderSet,
+  ServePipeOptions as servePipeOptions,
+} from './pipe-server.js'
 export { servePipe } from './pipe-server.js'

@@ -15,6 +15,7 @@ import { PipeTransport, PROVIDER_METHODS, toPipePath } from './pipe-protocol.js'
 export interface connectPipeOptions {
   pipeName: string
   connectTimeout?: number
+  context?: unknown
 }
 
 export interface PipeConnection {
@@ -76,9 +77,9 @@ export function connectPipe(
         },
       })
 
-      // Perform handshake
+      // Perform handshake — send client context so server can create providers
       transport
-        .sendRequest('_handshake', [])
+        .sendRequest('_handshake', [options.context])
         .then((raw) => {
           if (settled) return
           const handshakeResult = raw as { methods: string[] }

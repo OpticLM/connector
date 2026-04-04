@@ -26,10 +26,6 @@ interface PipeNotification {
 
 type PipeMessage = PipeRequest | PipeResponse | PipeNotification
 
-// ============================================================================
-// PipeTransport
-// ============================================================================
-
 interface PipeTransportOptions {
   onRequest?: (method: string, params: unknown[]) => Promise<unknown>
   onNotification?: (method: string, params: unknown[]) => void
@@ -159,19 +155,11 @@ export class PipeTransport {
   }
 }
 
-// ============================================================================
-// Helpers
-// ============================================================================
-
 export function toPipePath(pipeName: string): string {
   return process.platform === 'win32'
     ? `\\\\.\\pipe\\${pipeName}`
     : `/tmp/${pipeName}.sock`
 }
-
-// ============================================================================
-// Provider Method Registry
-// ============================================================================
 
 export type PipeProviderKey =
   | 'fileAccess'

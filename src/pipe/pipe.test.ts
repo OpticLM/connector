@@ -18,11 +18,7 @@ import {
 } from '../mcp/server.fixtures.js'
 import type { Diagnostic } from '../types.js'
 import { connectPipe, type PipeConnection } from './pipe-client.js'
-import {
-  type PipeServer,
-  servePipe,
-  type servePipeOptions,
-} from './pipe-server.js'
+import { type PipeServer, type ProviderSet, servePipe } from './pipe-server.js'
 
 function uniquePipeName(): string {
   return `mcp-lsp-test-${nanoid()}`
@@ -42,11 +38,14 @@ afterEach(async () => {
   servers.length = 0
 })
 
-async function setupPipe(options: Omit<servePipeOptions, 'pipeName'>) {
+async function setupPipe(providers: ProviderSet, context?: unknown) {
   const pipeName = uniquePipeName()
-  const server = await servePipe({ ...options, pipeName })
+  const server = await servePipe({
+    pipeName,
+    createProviders: () => providers,
+  })
   servers.push(server)
-  const conn = await connectPipe({ pipeName })
+  const conn = await connectPipe({ pipeName, context })
   connections.push(conn)
   return { server, conn }
 }
@@ -96,6 +95,99 @@ describe('Pipe IPC - Handshake', () => {
     expect(conn.availableMethods).toContain('frontmatter.getFrontmatter')
     expect(conn.availableMethods).toContain('frontmatter.setFrontmatter')
     expect(conn.availableMethods).toContain('onDiagnosticsChanged')
+  })
+})
+
+describe('Pipe IPC - Context', () => {
+  it('createProviders receives the context sent by the client', async () => {
+    const receivedContexts: unknown[] = []
+    const pipeName = uniquePipeName()
+    const server = await servePipe({
+      pipeName,
+      createProviders: (ctx) => {
+        receivedContexts.push(ctx)
+        return { fileAccess: createMockFileAccess() }
+      },
+    })
+    servers.push(server)
+
+    const conn = await connectPipe({
+      pipeName,
+      context: { workspacePath: '/home/user/project' },
+    })
+    connections.push(conn)
+
+    expect(receivedContexts).toHaveLength(1)
+    expect(receivedContexts[0]).toStrictEqual({
+      workspacePath: '/home/user/project',
+    })
+  })
+
+  it('different clients send different contexts and get independent providers', async () => {
+    const receivedContexts: unknown[] = []
+    const pipeName = uniquePipeName()
+    const server = await servePipe({
+      pipeName,
+      createProviders: (ctx) => {
+        receivedContexts.push(ctx)
+        return { fileAccess: createMockFileAccess() }
+      },
+    })
+    servers.push(server)
+
+    const conn1 = await connectPipe({ pipeName, context: { user: 'alice' } })
+    connections.push(conn1)
+    const conn2 = await connectPipe({ pipeName, context: { user: 'bob' } })
+    connections.push(conn2)
+
+    expect(receivedContexts).toHaveLength(2)
+    expect(receivedContexts[0]).toStrictEqual({ user: 'alice' })
+    expect(receivedContexts[1]).toStrictEqual({ user: 'bob' })
+  })
+
+  it('context-aware providers return context-specific data', async () => {
+    const pipeName = uniquePipeName()
+    const server = await servePipe({
+      pipeName,
+      createProviders: (ctx) => {
+        const { prefix } = ctx as { prefix: string }
+        return {
+          fileAccess: {
+            readFile: async (uri: string) => `${prefix}:${uri}`,
+            readDirectory: async () => [],
+          },
+        }
+      },
+    })
+    servers.push(server)
+
+    const conn1 = await connectPipe({ pipeName, context: { prefix: 'alpha' } })
+    connections.push(conn1)
+    const conn2 = await connectPipe({ pipeName, context: { prefix: 'beta' } })
+    connections.push(conn2)
+
+    expect(await conn1.fileAccess?.readFile('file.ts')).toBe('alpha:file.ts')
+    expect(await conn2.fileAccess?.readFile('file.ts')).toBe('beta:file.ts')
+  })
+
+  it('undefined context is passed through', async () => {
+    const receivedContexts: unknown[] = []
+    const pipeName = uniquePipeName()
+    const server = await servePipe({
+      pipeName,
+      createProviders: (ctx) => {
+        receivedContexts.push(ctx)
+        return { fileAccess: createMockFileAccess() }
+      },
+    })
+    servers.push(server)
+
+    const conn = await connectPipe({ pipeName })
+    connections.push(conn)
+
+    expect(receivedContexts).toHaveLength(1)
+    // undefined serializes to null over JSON
+    expect(receivedContexts[0]).toBeNull()
   })
 })
 
@@ -320,8 +412,8 @@ describe('Pipe IPC - Multiple clients', () => {
 
     const pipeName = uniquePipeName()
     const server = await servePipe({
-      fileAccess: createMockFileAccess(files),
       pipeName,
+      createProviders: () => ({ fileAccess: createMockFileAccess(files) }),
     })
     servers.push(server)
 
@@ -351,19 +443,23 @@ describe('Pipe IPC - Multiple clients', () => {
     expect(r3).toBe('content-a')
   })
 
-  it('both clients receive notifications', async () => {
-    let serverBroadcast: ((uri: string) => void) | undefined
+  it('both clients receive notifications via shared subscriber set', async () => {
+    // Simulate a shared event bus — this is the idiomatic pattern for
+    // broadcasting when each connection gets its own provider instance.
+    const subscribers = new Set<(uri: string) => void>()
 
     const pipeName = uniquePipeName()
     const server = await servePipe({
-      fileAccess: createMockFileAccess(),
-      diagnostics: {
-        provideDiagnostics: vi.fn(async () => []),
-        onDiagnosticsChanged: (cb) => {
-          serverBroadcast = cb
-        },
-      },
       pipeName,
+      createProviders: () => ({
+        fileAccess: createMockFileAccess(),
+        diagnostics: {
+          provideDiagnostics: vi.fn(async () => []),
+          onDiagnosticsChanged: (cb) => {
+            subscribers.add(cb)
+          },
+        },
+      }),
     })
     servers.push(server)
 
@@ -377,7 +473,8 @@ describe('Pipe IPC - Multiple clients', () => {
     conn1.diagnostics?.onDiagnosticsChanged?.((uri) => received1.push(uri))
     conn2.diagnostics?.onDiagnosticsChanged?.((uri) => received2.push(uri))
 
-    serverBroadcast?.('file.ts')
+    // Broadcast to all connections via the shared subscriber set
+    for (const cb of subscribers) cb('file.ts')
     await new Promise((r) => setTimeout(r, 50))
 
     expect(received1).toStrictEqual(['file.ts'])
@@ -402,12 +499,14 @@ describe('Pipe IPC - Cleanup', () => {
     // Create a slow handler to keep a request pending
     const pipeName = uniquePipeName()
     const server = await servePipe({
-      fileAccess: {
-        readFile: () =>
-          new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
-        readDirectory: vi.fn(async () => []),
-      },
       pipeName,
+      createProviders: () => ({
+        fileAccess: {
+          readFile: () =>
+            new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
+          readDirectory: vi.fn(async () => []),
+        },
+      }),
     })
     servers.push(server)
 
@@ -426,12 +525,14 @@ describe('Pipe IPC - Cleanup', () => {
   it('client.disconnect() rejects pending requests', async () => {
     const pipeName = uniquePipeName()
     const server = await servePipe({
-      fileAccess: {
-        readFile: () =>
-          new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
-        readDirectory: vi.fn(async () => []),
-      },
       pipeName,
+      createProviders: () => ({
+        fileAccess: {
+          readFile: () =>
+            new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
+          readDirectory: vi.fn(async () => []),
+        },
+      }),
     })
     servers.push(server)
 

@@ -13,8 +13,7 @@ import type {
 import type { EditProvider, FileAccessProvider } from '../interfaces.js'
 import { PipeTransport, PROVIDER_METHODS, toPipePath } from './pipe-protocol.js'
 
-export interface servePipeOptions {
-  pipeName: string
+export interface ProviderSet {
   fileAccess: FileAccessProvider
   edit?: EditProvider
   definition?: DefinitionProvider
@@ -27,6 +26,11 @@ export interface servePipeOptions {
   frontmatter?: FrontmatterProvider
 }
 
+export interface ServePipeOptions {
+  pipeName: string
+  createProviders: (context: unknown) => ProviderSet | Promise<ProviderSet>
+}
+
 export interface PipeServer {
   readonly pipePath: string
   readonly connectionCount: number
@@ -35,45 +39,62 @@ export interface PipeServer {
 
 type MethodHandler = (...args: unknown[]) => Promise<unknown>
 
-export function servePipe(options: servePipeOptions): Promise<PipeServer> {
+export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
   const { pipeName } = options
   const pipePath = toPipePath(pipeName)
-
-  // Build method dispatch registry from providers
-  const registry = new Map<string, MethodHandler>()
-
-  for (const { providerKey, methods } of PROVIDER_METHODS) {
-    const provider = options[providerKey as keyof servePipeOptions] as
-      | Record<string, unknown>
-      | undefined
-    if (!provider) continue
-    for (const method of methods) {
-      const fn = provider[method]
-      if (typeof fn === 'function') {
-        const wireMethod = `${providerKey}.${method}`
-        registry.set(wireMethod, (...args: unknown[]) =>
-          (fn as (...a: unknown[]) => Promise<unknown>).apply(provider, args),
-        )
-      }
-    }
-  }
-
-  // Pre-compute handshake response
-  const availableMethods = [...registry.keys()]
-  if (options.diagnostics?.onDiagnosticsChanged) {
-    availableMethods.push('onDiagnosticsChanged')
-  }
-  if (options.fileAccess.onFileChanged) {
-    availableMethods.push('onFileChanged')
-  }
 
   const connections = new Set<PipeTransport>()
 
   const server = createServer((socket) => {
+    let registry: Map<string, MethodHandler> | null = null
+
     const transport = new PipeTransport(socket, {
       onRequest: async (method, params) => {
         if (method === '_handshake') {
+          const context = params[0]
+          const providers = await options.createProviders(context)
+
+          // Build method dispatch registry from providers
+          registry = new Map<string, MethodHandler>()
+          for (const { providerKey, methods } of PROVIDER_METHODS) {
+            const provider = providers[providerKey as keyof ProviderSet] as
+              | Record<string, unknown>
+              | undefined
+            if (!provider) continue
+            for (const m of methods) {
+              const fn = provider[m]
+              if (typeof fn === 'function') {
+                registry.set(`${providerKey}.${m}`, (...args: unknown[]) =>
+                  (fn as (...a: unknown[]) => Promise<unknown>).apply(
+                    provider,
+                    args,
+                  ),
+                )
+              }
+            }
+          }
+
+          const availableMethods = [...registry.keys()]
+
+          // Register push notifications for this connection
+          if (providers.diagnostics?.onDiagnosticsChanged) {
+            providers.diagnostics.onDiagnosticsChanged((uri) => {
+              transport.sendNotification('onDiagnosticsChanged', [uri])
+            })
+            availableMethods.push('onDiagnosticsChanged')
+          }
+          if (providers.fileAccess.onFileChanged) {
+            providers.fileAccess.onFileChanged((uri) => {
+              transport.sendNotification('onFileChanged', [uri])
+            })
+            availableMethods.push('onFileChanged')
+          }
+
           return { methods: availableMethods }
+        }
+
+        if (!registry) {
+          throw new Error('Handshake not completed')
         }
         const handler = registry.get(method)
         if (!handler) {
@@ -85,24 +106,6 @@ export function servePipe(options: servePipeOptions): Promise<PipeServer> {
     connections.add(transport)
     socket.on('close', () => connections.delete(transport))
   })
-
-  // Register diagnostics push notifications
-  if (options.diagnostics?.onDiagnosticsChanged) {
-    options.diagnostics.onDiagnosticsChanged((uri) => {
-      for (const transport of connections) {
-        transport.sendNotification('onDiagnosticsChanged', [uri])
-      }
-    })
-  }
-
-  // Register file change push notifications
-  if (options.fileAccess.onFileChanged) {
-    options.fileAccess.onFileChanged((uri) => {
-      for (const transport of connections) {
-        transport.sendNotification('onFileChanged', [uri])
-      }
-    })
-  }
 
   return new Promise((resolve, reject) => {
     // On Unix, unlink stale socket before listening

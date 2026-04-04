@@ -340,24 +340,31 @@ install(server, definitionProvider, {
 
 When the MCP server runs in a separate process from the IDE plugin (e.g., spawned via stdio transport), the Pipe IPC layer lets the two communicate over a named pipe.
 
-**IDE plugin side** — expose providers:
+**IDE plugin side** — expose providers via a factory that receives client context:
 
 ```typescript
 import { servePipe } from '@opticlm/connector/pipe'
 
 const server = await servePipe({
   pipeName: 'my-ide-lsp',
-  fileAccess: { /* ... */ },
-  definition: { /* ... */ },
-  // ...
-  // Add only the providers your IDE supports
+  createProviders(context) {
+    // context is whatever the client sent at connect time
+    const { workspacePath } = context as { workspacePath: string }
+    return {
+      fileAccess: new MyFileAccess(workspacePath),
+      definition: new MyDefinitionProvider(workspacePath),
+      // Add only the providers your IDE supports
+    }
+  },
 })
 // server.pipePath        — the resolved pipe path
 // server.connectionCount — number of connected clients
 // await server.close()   — shut down
 ```
 
-**MCP server side** — connect and install proxy providers:
+The factory is called once per incoming connection, so providers can be tailored to each client. It may return a plain object or a `Promise` for async initialization.
+
+**MCP server side** — connect with context and install proxy providers:
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -367,6 +374,7 @@ import { install } from '@opticlm/connector/mcp'
 const conn = await connectPipe({
   pipeName: 'my-ide-lsp',
   connectTimeout: 5000,  // optional, default 5000ms
+  context: { workspacePath: '/path/to/project' },  // sent to createProviders
 })
 
 // conn exposes proxy providers as named fields:
@@ -385,7 +393,29 @@ if (conn.definition && conn.fileAccess)
 conn.disconnect()
 ```
 
-The handshake automatically discovers which providers the server exposes and builds typed proxies. Change notifications are forwarded as push notifications to all connected clients. Multiple clients can connect to the same pipe simultaneously.
+The handshake automatically discovers which providers the server exposes and builds typed proxies. Multiple clients can connect to the same pipe simultaneously, each with their own provider instances.
+
+**Broadcasting to multiple clients** — since each connection gets its own providers, use a shared subscriber set for push notifications that should reach all clients:
+
+```typescript
+const diagnosticsSubscribers = new Set<(uri: string) => void>()
+yourIDE.onDiagnosticsChanged((uri) => {
+  for (const cb of diagnosticsSubscribers) cb(uri)
+})
+
+await servePipe({
+  pipeName: 'my-ide-lsp',
+  createProviders(context) {
+    return {
+      fileAccess: { /* ... */ },
+      diagnostics: {
+        provideDiagnostics: (uri) => yourIDE.getDiagnostics(uri),
+        onDiagnosticsChanged: (cb) => diagnosticsSubscribers.add(cb),
+      },
+    }
+  },
+})
+```
 
 ## LSP Client (Built-in)
 
