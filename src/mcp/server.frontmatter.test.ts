@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { FrontmatterProvider } from './capabilities.js'
-import { install } from './mcp/index.js'
+import type { FrontmatterProvider } from '../capabilities.js'
+import type { Frontmatter, FrontmatterMatch } from '../types.js'
+import { install } from './index.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,
   createMockFrontmatterProvider,
   createMockServer,
 } from './server.fixtures.js'
-import type { Frontmatter, FrontmatterMatch } from './types.js'
 
 describe('frontmatter capability', () => {
   const mockFrontmatter: Frontmatter = {

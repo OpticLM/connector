@@ -1,12 +1,6 @@
-import { randomUUID } from 'node:crypto'
+import { nanoid } from 'nanoid'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { install } from './mcp/index.js'
-import { connectPipe, type LspPipeConnection } from './pipe-client.js'
-import {
-  type LspPipeServer,
-  servePipe,
-  type servePipeOptions,
-} from './pipe-server.js'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
@@ -21,11 +15,17 @@ import {
   createMockReferencesProvider,
   createMockServer,
   mockCodeSnippet,
-} from './server.fixtures.js'
+} from './mcp/server.fixtures.js'
+import { connectPipe, type LspPipeConnection } from './pipe-client.js'
+import {
+  type LspPipeServer,
+  servePipe,
+  type servePipeOptions,
+} from './pipe-server.js'
 import type { Diagnostic } from './types.js'
 
 function uniquePipeName(): string {
-  return `mcp-lsp-test-${randomUUID()}`
+  return `mcp-lsp-test-${nanoid()}`
 }
 
 const servers: LspPipeServer[] = []
@@ -467,7 +467,7 @@ describe('Pipe IPC - Connection timeout', () => {
   it('connect to non-existent pipe with short timeout rejects', async () => {
     await expect(
       connectPipe({
-        pipeName: `nonexistent-pipe-${randomUUID()}`,
+        pipeName: `nonexistent-pipe-${nanoid()}`,
         connectTimeout: 200,
       }),
     ).rejects.toThrow()

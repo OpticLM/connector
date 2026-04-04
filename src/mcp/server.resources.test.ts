@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { install } from './mcp/index.js'
+import type { Diagnostic, DocumentSymbol } from '../types.js'
+import { install } from './index.js'
 import {
   createAndConnectMockClient,
   createMockDiagnosticsProvider,
@@ -7,7 +8,6 @@ import {
   createMockOutlineProvider,
   createMockServer,
 } from './server.fixtures.js'
-import type { Diagnostic, DocumentSymbol } from './types.js'
 
 describe('resource integration', () => {
   it('should register and access file diagnostics resource', async () => {

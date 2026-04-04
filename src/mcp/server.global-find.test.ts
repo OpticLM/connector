@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { GlobalFindMatch } from './capabilities.js'
-import { install } from './mcp/index.js'
+import type { GlobalFindMatch } from '../capabilities.js'
+import { install } from './index.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,

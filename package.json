@@ -51,6 +51,7 @@
     "@types/node": "^25",
     "tsup": "^8.5.1",
     "typescript": "^5.9",
+    "nanoid": "^5.1.7",
     "vitest": "^4"
   },
   "engines": {

@@ -29,6 +29,7 @@ import type {
   GlobalFindSchema,
   SetFrontmatterSchema,
 } from '../schemas.js'
+import type { EditResult, FrontmatterMatch, Link } from '../types.js'
 import {
   createFileCompleter,
   registerAddLinkTool,
@@ -46,8 +47,7 @@ import {
   registerGraphResources,
   registerOutlineResource,
   registerSetFrontmatterTool,
-} from '../server.js'
-import type { EditResult, FrontmatterMatch, Link } from '../types.js'
+} from './server.js'
 
 // ============================================================================
 // Provider merging

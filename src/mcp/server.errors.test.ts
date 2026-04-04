@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { DefinitionProvider } from './capabilities.js'
-import { install } from './mcp/index.js'
+import type { DefinitionProvider } from '../capabilities.js'
+import { install } from './index.js'
 import {
   createMockDefinitionProvider,
   createMockFileAccess,

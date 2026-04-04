@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { install } from './mcp/index.js'
+import { install } from './index.js'
 import {
   createAndConnectMockClient,
   createMockFileAccess,

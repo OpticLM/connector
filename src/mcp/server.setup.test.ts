@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { OnDiagnosticsChangedCallback } from './capabilities.js'
-import { install } from './mcp/index.js'
+import type { OnDiagnosticsChangedCallback } from '../capabilities.js'
+import type { Diagnostic, DocumentSymbol } from '../types.js'
+import { install } from './index.js'
 import {
   createMockDefinitionProvider,
   createMockDiagnosticsProvider,
@@ -11,7 +12,6 @@ import {
   createMockReferencesProvider,
   createMockServer,
 } from './server.fixtures.js'
-import type { Diagnostic, DocumentSymbol } from './types.js'
 
 describe('McpLspDriver', () => {
   describe('constructor', () => {

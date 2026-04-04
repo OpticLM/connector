@@ -13,8 +13,8 @@ import type {
   HierarchyProvider,
   OutlineProvider,
   ReferencesProvider,
-} from './capabilities.js'
-import type { EditProvider, FileAccessProvider } from './interfaces.js'
+} from '../capabilities.js'
+import type { EditProvider, FileAccessProvider } from '../interfaces.js'
 import type {
   CodeSnippet,
   Diagnostic,
@@ -23,7 +23,7 @@ import type {
   FrontmatterMatch,
   FrontmatterValue,
   Link,
-} from './types.js'
+} from '../types.js'
 
 export const mockFiles = {
   'path/to/file': 'MockFileContent',

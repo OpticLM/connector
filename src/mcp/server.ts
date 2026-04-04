@@ -20,21 +20,21 @@ import type {
   HierarchyProvider,
   OutlineProvider,
   ReferencesProvider,
-} from './capabilities.js'
+} from '../capabilities.js'
 import {
   formatDiagnosticsAsMarkdown,
   formatSymbolsAsMarkdown,
   generateEditId,
   makeToolResult,
   normalizeUri,
-} from './formatting.js'
+} from '../formatting.js'
 import {
   computeLineHash,
   formatAsHashlines,
   parseHashlineRef,
   toNumberedLines,
-} from './hashline.js'
-import type { EditProvider, FileAccessProvider } from './interfaces.js'
+} from '../hashline.js'
+import type { EditProvider, FileAccessProvider } from '../interfaces.js'
 
 /**
  * Parses a line range fragment from a URI (e.g., "#L21" or "#L21-L28").
@@ -102,7 +102,7 @@ import {
   type ResolverConfig,
   SymbolResolutionError,
   type SymbolResolver,
-} from './resolver.js'
+} from '../resolver.js'
 import {
   AddLinkSchema,
   ApplyEditSchema,
@@ -111,14 +111,14 @@ import {
   GetFrontmatterStructureSchema,
   GlobalFindSchema,
   SetFrontmatterSchema,
-} from './schemas.js'
+} from '../schemas.js'
 import type {
   EditResult,
   FrontmatterMatch,
   FuzzyPosition,
   Link,
   PendingEditOperation,
-} from './types.js'
+} from '../types.js'
 
 export type { ResolverConfig }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { install } from './mcp/index.js'
+import type { FrontmatterMatch, Link } from '../types.js'
+import { install } from '.'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
@@ -13,7 +14,6 @@ import {
   createMockServer,
   mockCodeSnippet,
 } from './server.fixtures.js'
-import type { FrontmatterMatch, Link } from './types.js'
 
 const expectedSnippet = {
   uri: mockCodeSnippet.uri,
