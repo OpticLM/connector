@@ -65,10 +65,15 @@ export function createMockDefinitionProvider(
 
 export function createMockReferencesProvider(
   results: CodeSnippet[] = [],
+  fileResults?: CodeSnippet[],
 ): ReferencesProvider {
-  return {
+  const provider: ReferencesProvider = {
     provideReferences: vi.fn(async () => results),
   }
+  if (fileResults !== undefined) {
+    provider.provideFileReferences = vi.fn(async () => fileResults)
+  }
+  return provider
 }
 
 export function createMockHierarchyProvider(

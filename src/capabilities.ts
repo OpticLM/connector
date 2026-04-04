@@ -65,6 +65,13 @@ export interface ReferencesProvider {
     uri: UnifiedUri,
     position: ExactPosition,
   ): Promise<CodeSnippet[]>
+
+  /**
+   * Finds all references to the given file.
+   *
+   * @param uri - The URI of the file
+   */
+  provideFileReferences?(uri: UnifiedUri): Promise<CodeSnippet[]>
 }
 
 /**

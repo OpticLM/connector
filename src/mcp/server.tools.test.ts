@@ -239,6 +239,57 @@ describe('tool registration', () => {
     )
   })
 
+  it('should register find_file_references when provideFileReferences is available', async () => {
+    const server = createMockServer()
+    const fileSnippets: CodeSnippet[] = [
+      {
+        uri: 'src/importer.ts',
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 26 },
+        },
+        content: "import { foo } from './foo'",
+      },
+    ]
+    const referencesProvider = createMockReferencesProvider([], fileSnippets)
+    const fileAccess = createMockFileAccess()
+
+    install(server, fileAccess)
+    install(server, referencesProvider, { fileAccess })
+
+    const client = await createAndConnectMockClient(server)
+    const r = await client.callTool({
+      name: 'find_file_references',
+      arguments: { uri: 'src/foo.ts' },
+    })
+    expect(r.structuredContent).toStrictEqual({
+      snippets: [
+        {
+          content: "import { foo } from './foo'",
+          endLine: 1,
+          startLine: 1,
+          uri: 'src/importer.ts',
+        },
+      ],
+    })
+  })
+
+  it('should not register find_file_references when provideFileReferences is absent', async () => {
+    const server = createMockServer()
+    const referencesProvider = createMockReferencesProvider()
+    const fileAccess = createMockFileAccess()
+
+    install(server, fileAccess)
+    install(server, referencesProvider, { fileAccess })
+
+    const client = await createAndConnectMockClient(server)
+    const r = await client.callTool({
+      name: 'find_file_references',
+      arguments: { uri: 'src/foo.ts' },
+    })
+    expect(r.isError).toBe(true)
+  })
+
   it('should register apply_edit and return result when user approves', async () => {
     const server = createMockServer()
     const edit = createMockEditProvider(true)

@@ -115,6 +115,12 @@ Navigate to the definition of a symbol.
 
 Find all references to a symbol.
 
+### `find_file_references`
+
+Find all references to a file across the workspace (e.g., all files that import or link to the given file).
+
+Only registered when your `ReferencesProvider` implements the optional `provideFileReferences` method.
+
 ### `call_hierarchy`
 
 Get call hierarchy for a function or method.
@@ -174,23 +180,6 @@ install(server, definitionProvider, {
   onTypeDefinitionOutput: (output) => log('goto_type_definition result', output.snippets.length),
 })
 ```
-
-### Callback reference
-
-| Provider | Tool | Input callback | Output callback |
-|----------|------|----------------|-----------------|
-| `EditProvider` | `apply_edit` | `onEditInput` | `onEditOutput` |
-| `DefinitionProvider` | `goto_definition` | `onDefinitionInput` | `onDefinitionOutput` |
-| `DefinitionProvider` | `goto_type_definition` | `onTypeDefinitionInput` | `onTypeDefinitionOutput` |
-| `ReferencesProvider` | `find_references` | `onReferencesInput` | `onReferencesOutput` |
-| `HierarchyProvider` | `call_hierarchy` | `onCallHierarchyInput` | `onCallHierarchyOutput` |
-| `GlobalFindProvider` | `global_find` | `onGlobalFindInput` | `onGlobalFindOutput` |
-| `GraphProvider` | `get_link_structure` | — | `onLinkStructureOutput` |
-| `GraphProvider` | `add_link` | `onAddLinkInput` | `onAddLinkOutput` |
-| `FrontmatterProvider` | `get_frontmatter_structure` | `onFrontmatterStructureInput` | `onFrontmatterStructureOutput` |
-| `FrontmatterProvider` | `set_frontmatter` | `onSetFrontmatterInput` | `onSetFrontmatterOutput` |
-
-`get_link_structure` has no `onInput` since its input schema is empty. Resource-only providers (`FileAccessProvider`, `DiagnosticsProvider`, `OutlineProvider`) have no callbacks.
 
 ## MCP Resources
 

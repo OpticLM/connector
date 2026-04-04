@@ -24,6 +24,7 @@ import type {
   AddLinkSchema,
   ApplyEditSchema,
   CallHierarchySchema,
+  FileReferencesSchema,
   FuzzyPositionSchema,
   GetFrontmatterStructureSchema,
   GlobalFindSchema,
@@ -37,6 +38,7 @@ import {
   registerCallHierarchyTool,
   registerDiagnosticsResources,
   registerFilesystemResource,
+  registerFindFileReferencesTool,
   registerFindReferencesTool,
   registerFrontmatterResource,
   registerGetFrontmatterStructureTool,
@@ -109,14 +111,25 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
   // ReferencesProvider: provideReferences
   if ('provideReferences' in first) {
     const ps = providers as ReferencesProvider[]
-    return {
+    const merged: ReferencesProvider = {
       async provideReferences(uri, position) {
         const results = await Promise.all(
           ps.map((p) => p.provideReferences(uri, position)),
         )
         return results.flat()
       },
-    } satisfies ReferencesProvider
+    }
+    if (ps.some((p) => p.provideFileReferences)) {
+      merged.provideFileReferences = async (uri) => {
+        const withMethod = ps.filter((p) => p.provideFileReferences)
+        const results = await Promise.all(
+          // biome-ignore lint/style/noNonNullAssertion: filter ensures
+          withMethod.map((p) => p.provideFileReferences!(uri)),
+        )
+        return results.flat()
+      }
+    }
+    return merged
   }
 
   // HierarchyProvider: provideCallHierarchy
@@ -298,6 +311,10 @@ export interface ReferencesInstallOptions extends InstallOptions {
   onReferencesInput?: (input: z.infer<typeof FuzzyPositionSchema>) => void
   /** Called with the result of `find_references`. */
   onReferencesOutput?: (output: SnippetsOutput) => void
+  /** Called with the raw tool input for `find_file_references`. */
+  onFileReferencesInput?: (input: z.infer<typeof FileReferencesSchema>) => void
+  /** Called with the result of `find_file_references`. */
+  onFileReferencesOutput?: (output: SnippetsOutput) => void
 }
 
 /** Options for installing a {@link HierarchyProvider}. */
@@ -477,16 +494,16 @@ export function install(
 
   // ReferencesProvider: provideReferences
   if ('provideReferences' in resolved) {
+    const refsProvider = resolved as ReferencesProvider
     const opts = options as ReferencesInstallOptions | undefined
-    registerFindReferencesTool(
-      server,
-      resolved as ReferencesProvider,
-      createResolver(),
-      {
-        onInput: opts?.onReferencesInput,
-        onOutput: opts?.onReferencesOutput,
-      },
-    )
+    registerFindReferencesTool(server, refsProvider, createResolver(), {
+      onInput: opts?.onReferencesInput,
+      onOutput: opts?.onReferencesOutput,
+    })
+    registerFindFileReferencesTool(server, refsProvider, {
+      onInput: opts?.onFileReferencesInput,
+      onOutput: opts?.onFileReferencesOutput,
+    })
     return
   }
 

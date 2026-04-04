@@ -94,6 +94,10 @@ export const AddLinkSchema = z.object({
   link_to: z.string().describe('The target URI the link should point to'),
 })
 
+export const FileReferencesSchema = z.object({
+  uri,
+})
+
 export const GetFrontmatterStructureSchema = z.object({
   property: z.string().describe('The frontmatter property name to search for'),
   path: z

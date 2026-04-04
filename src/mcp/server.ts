@@ -107,6 +107,7 @@ import {
   AddLinkSchema,
   ApplyEditSchema,
   CallHierarchySchema,
+  FileReferencesSchema,
   FuzzyPositionSchema,
   GetFrontmatterStructureSchema,
   GlobalFindSchema,
@@ -390,6 +391,62 @@ export function registerCallHierarchyTool(
           error instanceof SymbolResolutionError
             ? error.message
             : `Error: ${error instanceof Error ? error.message : String(error)}`
+        return {
+          content: [{ type: 'text' as const, text: message }],
+          structuredContent: { error: message },
+          isError: true,
+        }
+      }
+    },
+  )
+}
+
+/**
+ * Registers the find_file_references tool.
+ */
+export function registerFindFileReferencesTool(
+  server: McpServer,
+  provider: ReferencesProvider,
+  callbacks?: {
+    onInput?: (input: z.infer<typeof FileReferencesSchema>) => void
+    onOutput?: (output: SnippetOutput) => void
+  },
+): void {
+  const fileReferencesProvider = provider.provideFileReferences
+  if (!fileReferencesProvider) return
+
+  server.registerTool(
+    'find_file_references',
+    {
+      description:
+        'Find all references to a file across the workspace. Returns locations that import or link to the given file.',
+      inputSchema: FileReferencesSchema,
+      outputSchema: {
+        snippets: z.array(
+          z.object({
+            uri: z.string(),
+            startLine: z.number(),
+            endLine: z.number(),
+            content: z.string(),
+          }),
+        ),
+      },
+    },
+    async (params) => {
+      callbacks?.onInput?.(params)
+      try {
+        const uri = normalizeUri(params.uri)
+        const snippets = (await fileReferencesProvider(uri)).map((snippet) => ({
+          uri: snippet.uri,
+          startLine: snippet.range.start.line + 1,
+          endLine: snippet.range.end.line + 1,
+          content: snippet.content,
+        }))
+
+        callbacks?.onOutput?.({ snippets })
+        return makeToolResult({ snippets })
+      } catch (error) {
+        const message = `Error: ${error instanceof Error ? error.message : String(error)}`
         return {
           content: [{ type: 'text' as const, text: message }],
           structuredContent: { error: message },

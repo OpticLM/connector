@@ -310,6 +310,7 @@ export class LspClient {
       ;(this as { references: ReferencesProvider | undefined }).references = {
         provideReferences: (uri, position) =>
           this.provideReferences(uri, position),
+        provideFileReferences: (uri) => this.provideFileReferences(uri),
       }
     }
 
@@ -493,6 +494,23 @@ export class LspClient {
       textDocument: { uri: lspUri },
       position: { line: position.line, character: position.character },
       context: { includeDeclaration: true },
+    })
+
+    return convertLocationsToSnippets(
+      this.options.workspacePath,
+      result as Location[] | null,
+      this.options.readFile,
+    )
+  }
+
+  private async provideFileReferences(uri: UnifiedUri): Promise<CodeSnippet[]> {
+    const lspUri = pathToLspUri(this.options.workspacePath, uri)
+    await this.ensureDocumentOpen(lspUri)
+
+    const result = await this.sendRequest('textDocument/references', {
+      textDocument: { uri: lspUri },
+      position: { line: 0, character: 0 },
+      context: { includeDeclaration: false },
     })
 
     return convertLocationsToSnippets(
