@@ -29,10 +29,10 @@ import type {
   DefinitionProvider,
   DiagnosticsProvider,
   HierarchyProvider,
-  OnDiagnosticsChangedCallback,
   OutlineProvider,
   ReferencesProvider,
 } from '../capabilities.js'
+import type { FileAccessProvider } from '../interfaces.js'
 import type {
   CodeSnippet,
   Diagnostic,
@@ -74,13 +74,15 @@ export class LspClient {
   private connection: ProtocolConnection | null = null
   private openDocuments = new Map<string, OpenDocument>()
   private diagnosticsCache = new Map<string, Diagnostic[]>()
-  private diagnosticsListeners: OnDiagnosticsChangedCallback[] = []
+  private diagnosticsListeners: ((uri: UnifiedUri) => void)[] = []
+  private fileChangedListeners: ((uri: UnifiedUri) => void)[] = []
 
   readonly definition: DefinitionProvider | undefined
   readonly references: ReferencesProvider | undefined
   readonly hierarchy: HierarchyProvider | undefined
   readonly outline: OutlineProvider | undefined
   readonly diagnostics: DiagnosticsProvider | undefined
+  readonly fileAccess: Pick<FileAccessProvider, 'onFileChanged'>
 
   private readonly options: Required<
     Pick<LspClientOptions, 'documentIdleTimeout' | 'requestTimeout'>
@@ -101,16 +103,15 @@ export class LspClient {
     this.hierarchy = undefined
     this.outline = undefined
     this.diagnostics = undefined
+    this.fileAccess = {
+      onFileChanged: (callback) => {
+        this.fileChangedListeners.push(callback)
+      },
+    }
   }
 
   getState(): LspClientState {
     return this.state
-  }
-
-  get onDiagnosticsChanged(): (callback: OnDiagnosticsChangedCallback) => void {
-    return (callback: OnDiagnosticsChangedCallback) => {
-      this.diagnosticsListeners.push(callback)
-    }
   }
 
   async start(): Promise<void> {
@@ -187,6 +188,10 @@ export class LspClient {
     // Close and reopen with fresh content
     await this.closeDocument(lspUri)
     await this.ensureDocumentOpen(lspUri)
+
+    for (const listener of this.fileChangedListeners) {
+      listener(sdkPath)
+    }
   }
 
   // --- Internal methods ---
@@ -324,6 +329,9 @@ export class LspClient {
     ;(this as { diagnostics: DiagnosticsProvider | undefined }).diagnostics = {
       provideDiagnostics: (uri) => this.provideDiagnostics(uri),
       getWorkspaceDiagnostics: () => this.getWorkspaceDiagnostics(),
+      onDiagnosticsChanged: (callback) => {
+        this.diagnosticsListeners.push(callback)
+      },
     }
   }
 

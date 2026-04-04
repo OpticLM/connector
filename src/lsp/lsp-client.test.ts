@@ -529,7 +529,7 @@ describe('LspClient', () => {
       const fileUri = `file:///${WORKSPACE.replace(/\\/g, '/')}/src/main.ts`
 
       const changedUris: string[] = []
-      client.onDiagnosticsChanged((uri) => changedUris.push(uri))
+      client.diagnostics?.onDiagnosticsChanged?.((uri) => changedUris.push(uri))
 
       conn.onNotification('textDocument/didOpen', () => {})
 

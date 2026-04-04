@@ -360,10 +360,7 @@ const server = await servePipe({
   pipeName: 'my-ide-lsp',
   fileAccess: { /* ... */ },
   definition: { /* ... */ },
-  diagnostics: {
-    provideDiagnostics: async (uri) => { /* ... */ },
-    onDiagnosticsChanged: (callback) => { /* ... */ },
-  },
+  // ...
   // Add only the providers your IDE supports
 })
 // server.pipePath        — the resolved pipe path
@@ -392,8 +389,7 @@ const mcpServer = new McpServer({ name: 'my-mcp', version: '1.0.0' })
 if (conn.fileAccess) install(mcpServer, conn.fileAccess)
 if (conn.definition && conn.fileAccess)
   install(mcpServer, conn.definition, { fileAccess: conn.fileAccess })
-if (conn.diagnostics && conn.fileAccess)
-  install(mcpServer, conn.diagnostics, { fileAccess: conn.fileAccess })
+// ...
 // Install whichever proxy providers are available
 
 // When done:
@@ -434,13 +430,6 @@ const fileAccess = {
 // Providers are automatically created based on server capabilities
 install(server, fileAccess)
 if (lsp.definition) install(server, lsp.definition, { fileAccess })
-if (lsp.references) install(server, lsp.references, { fileAccess })
-if (lsp.hierarchy)  install(server, lsp.hierarchy,  { fileAccess })
-if (lsp.outline)    install(server, lsp.outline,    { fileAccess })
-install(server, {
-  ...lsp.diagnostics,
-  onDiagnosticsChanged: lsp.onDiagnosticsChanged,
-}, { fileAccess })
 
 const transport = new StdioServerTransport()
 await server.connect(transport)
@@ -464,12 +453,7 @@ interface LspClientOptions {
 ### How It Works
 
 1. `start()` spawns the LSP server process and performs the initialize/initialized handshake
-2. The server's `ServerCapabilities` response determines which providers are created:
-   - `definitionProvider` &rarr; `lsp.definition`
-   - `referencesProvider` &rarr; `lsp.references`
-   - `callHierarchyProvider` &rarr; `lsp.hierarchy`
-   - `documentSymbolProvider` &rarr; `lsp.outline`
-   - Diagnostics are always available (via `textDocument/publishDiagnostics` notifications)
+2. The server's `ServerCapabilities` response determines which providers are created
 3. Providers that the server does not support remain `undefined`
 4. Documents are automatically opened/closed with the server on demand, with an idle timeout for cleanup
 
