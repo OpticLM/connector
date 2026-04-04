@@ -313,7 +313,7 @@ describe('provider arrays', () => {
 describe('edit operations', () => {
   it('should create pending edit operation with correct structure', () => {
     const server = createMockServer()
-    const edit = createMockEditProvider(true)
+    const edit = createMockEditProvider()
     const files = { 'test.ts': 'const foo = 1;' }
     const fileAccess = createMockFileAccess(files)
 
@@ -325,7 +325,7 @@ describe('edit operations', () => {
 
   it('should handle user rejection of edits', () => {
     const server = createMockServer()
-    const edit = createMockEditProvider(false)
+    const edit = createMockEditProvider({ type: 'UserRejected' })
     const files = { 'test.ts': 'const foo = 1;' }
     const fileAccess = createMockFileAccess(files)
 

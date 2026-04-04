@@ -1,5 +1,5 @@
 /**
- * Capability Providers for MCP LSP Driver SDK
+ * Capability Providers
  *
  * Each provider interface corresponds to one LSP capability.
  * Note: All inputs use ExactPosition. The SDK handles Fuzzy -> Exact conversion.
@@ -16,10 +16,6 @@ import type {
   Link,
   UnifiedUri,
 } from './types.js'
-
-// ============================================================================
-// LSP Capability Providers
-// ============================================================================
 
 /**
  * Provides go-to-definition functionality.

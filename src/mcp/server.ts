@@ -668,11 +668,7 @@ export function registerApplyEditTool(
     onOutput?: (output: EditResult) => void
   },
 ): void {
-  // Get the appropriate edit function (prefer previewAndApplyEdits over applyEdits)
-  const applyEditsFn =
-    provider.previewAndApplyEdits?.bind(provider) ??
-    provider.applyEdits?.bind(provider)
-  if (!applyEditsFn) return
+  const applyEditsFn = provider.applyEdits.bind(provider)
 
   server.registerTool(
     'apply_edit',
@@ -691,10 +687,6 @@ export function registerApplyEditTool(
         end_hash: ApplyEditSchema.shape.end_hash,
         replace_text: ApplyEditSchema.shape.replace_text,
         description: ApplyEditSchema.shape.description,
-      },
-      outputSchema: {
-        success: z.boolean(),
-        message: z.string(),
       },
     },
     async (params) => {
@@ -741,37 +733,25 @@ export function registerApplyEditTool(
           )
         }
 
-        // Build DiskRange (convert 1-based to 0-based)
-        const range = {
-          start: { line: startRef.line - 1, character: 0 },
-          end: {
-            line: endRef.line - 1,
-            character: endLineText.length,
-          },
-        }
+        // Compute updated file content by applying the edit
+        const linesBefore = allLines.slice(0, startRef.line - 1)
+        const linesAfter = allLines.slice(endRef.line)
+        const updated = [
+          ...linesBefore,
+          params.replace_text,
+          ...linesAfter,
+        ].join('\n')
 
         // Create pending edit operation
         const operation: PendingEditOperation = {
           id: generateEditId(),
           uri,
-          edits: [
-            {
-              range,
-              newText: params.replace_text,
-            },
-          ],
+          updated,
           description: params.description,
         }
 
         // Apply the edit
-        const approved = await applyEditsFn(operation)
-
-        const result: EditResult = approved
-          ? { success: true, message: 'Edit successfully applied and saved.' }
-          : {
-              success: false,
-              message: 'Edit rejected by user.',
-            }
+        const result: EditResult = await applyEditsFn(operation)
 
         callbacks?.onOutput?.(result)
         return makeToolResult(result)

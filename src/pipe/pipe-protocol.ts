@@ -197,7 +197,7 @@ export const PROVIDER_METHODS: ProviderMethodEntry[] = [
   },
   {
     providerKey: 'edit',
-    methods: ['applyEdits', 'previewAndApplyEdits'],
+    methods: ['applyEdits'],
   },
   { providerKey: 'definition', methods: ['provideDefinition'] },
   { providerKey: 'references', methods: ['provideReferences'] },

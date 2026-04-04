@@ -292,7 +292,8 @@ describe('tool registration', () => {
 
   it('should register apply_edit and return result when user approves', async () => {
     const server = createMockServer()
-    const edit = createMockEditProvider(true)
+    const updated = 'const foo = 100; const bar = 2;'
+    const edit = createMockEditProvider({ type: 'Approved', updated })
     const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
     const fileAccess = createMockFileAccess(files)
 
@@ -305,19 +306,45 @@ describe('tool registration', () => {
       arguments: {
         uri: 'test.ts',
         start_hash: '1:4e',
-        replace_text: 'const foo = 100; const bar = 2;',
+        replace_text: updated,
         description: 'Update foo value',
       },
     })
-    expect(r.structuredContent).toStrictEqual({
-      success: true,
-      message: 'Edit successfully applied and saved.',
+    expect(r.structuredContent).toStrictEqual({ type: 'Approved', updated })
+  })
+
+  it('should pass computed updated content to applyEdits', async () => {
+    const server = createMockServer()
+    const edit = createMockEditProvider({ type: 'Approved', updated: '' })
+    // Three-line file; edit replaces line 2
+    const files = { 'test.ts': 'line1\nline2\nline3' }
+    const fileAccess = createMockFileAccess(files)
+
+    install(server, fileAccess)
+    install(server, edit, { fileAccess })
+
+    const client = await createAndConnectMockClient(server)
+    await client.callTool({
+      name: 'apply_edit',
+      arguments: {
+        uri: 'test.ts',
+        start_hash: '2:fa',
+        replace_text: 'REPLACED',
+        description: 'Replace line 2',
+      },
     })
+    expect(edit.applyEdits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: 'test.ts',
+        updated: 'line1\nREPLACED\nline3',
+        description: 'Replace line 2',
+      }),
+    )
   })
 
   it('should register apply_edit and return rejection when user declines', async () => {
     const server = createMockServer()
-    const edit = createMockEditProvider(false)
+    const edit = createMockEditProvider({ type: 'UserRejected' })
     const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
     const fileAccess = createMockFileAccess(files)
 
@@ -334,10 +361,7 @@ describe('tool registration', () => {
         description: 'Update foo value',
       },
     })
-    expect(r.structuredContent).toStrictEqual({
-      success: false,
-      message: 'Edit rejected by user.',
-    })
+    expect(r.structuredContent).toStrictEqual({ type: 'UserRejected' })
   })
 
   it('should return error when symbol is not found in file', async () => {
@@ -384,7 +408,7 @@ describe('tool registration', () => {
 
   it('should return error when apply_edit hash does not match (stale read)', async () => {
     const server = createMockServer()
-    const edit = createMockEditProvider(true)
+    const edit = createMockEditProvider()
     const files = { 'test.ts': 'const foo = 1;' }
     const fileAccess = createMockFileAccess(files)
 

@@ -1,8 +1,8 @@
 /**
- * MCP LSP Driver SDK
+ * OpticLM Connector
  *
- * A TypeScript SDK for building IDE plugins that expose LSP features
- * through the Model Context Protocol (MCP).
+ * Provides an abstract interface that allows LLMs to connect to fact sources such as LSPs,
+ * code diagnostics, symbol definitions/references, links, and frontmatter.
  *
  * @packageDocumentation
  */
@@ -50,6 +50,5 @@ export type {
   Link,
   PendingEditOperation,
   SymbolKind,
-  TextEdit,
   UnifiedUri,
 } from './types.js'

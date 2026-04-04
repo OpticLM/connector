@@ -37,7 +37,7 @@ describe('tool callbacks', () => {
       const onEditInput = vi.fn()
 
       install(server, createMockFileAccess(files))
-      install(server, createMockEditProvider(true), {
+      install(server, createMockEditProvider(), {
         fileAccess: createMockFileAccess(files),
         onEditInput,
       })
@@ -55,10 +55,14 @@ describe('tool callbacks', () => {
       const onEditOutput = vi.fn()
 
       install(server, createMockFileAccess(files))
-      install(server, createMockEditProvider(true), {
-        fileAccess: createMockFileAccess(files),
-        onEditOutput,
-      })
+      install(
+        server,
+        createMockEditProvider({ type: 'Approved', updated: '' }),
+        {
+          fileAccess: createMockFileAccess(files),
+          onEditOutput,
+        },
+      )
 
       await (await createAndConnectMockClient(server)).callTool({
         name: 'apply_edit',
@@ -66,8 +70,8 @@ describe('tool callbacks', () => {
       })
 
       expect(onEditOutput).toHaveBeenCalledWith({
-        success: true,
-        message: 'Edit successfully applied and saved.',
+        type: 'Approved',
+        updated: '',
       })
     })
 
@@ -76,7 +80,7 @@ describe('tool callbacks', () => {
       const onEditOutput = vi.fn()
 
       install(server, createMockFileAccess(files))
-      install(server, createMockEditProvider(false), {
+      install(server, createMockEditProvider({ type: 'UserRejected' }), {
         fileAccess: createMockFileAccess(files),
         onEditOutput,
       })
@@ -86,10 +90,7 @@ describe('tool callbacks', () => {
         arguments: validArgs,
       })
 
-      expect(onEditOutput).toHaveBeenCalledWith({
-        success: false,
-        message: 'Edit rejected by user.',
-      })
+      expect(onEditOutput).toHaveBeenCalledWith({ type: 'UserRejected' })
     })
 
     it('does not call onEditOutput on error', async () => {
@@ -97,7 +98,7 @@ describe('tool callbacks', () => {
       const onEditOutput = vi.fn()
 
       install(server, createMockFileAccess(files))
-      install(server, createMockEditProvider(true), {
+      install(server, createMockEditProvider(), {
         fileAccess: createMockFileAccess(files),
         onEditOutput,
       })

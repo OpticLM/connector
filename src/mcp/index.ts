@@ -79,8 +79,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
     return merged
   }
 
-  // EditProvider: applyEdits or previewAndApplyEdits — use first
-  if ('applyEdits' in first || 'previewAndApplyEdits' in first) {
+  if ('applyEdits' in first) {
     return first
   }
 
@@ -455,7 +454,7 @@ export function install(
   }
 
   // EditProvider: applyEdits or previewAndApplyEdits
-  if ('applyEdits' in resolved || 'previewAndApplyEdits' in resolved) {
+  if ('applyEdits' in resolved) {
     if (!fileAccess) {
       throw new Error(
         'fileAccess is required in options when installing an EditProvider',

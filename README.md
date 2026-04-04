@@ -54,8 +54,8 @@ const fileAccess = {
 // 3. Implement Edit Provider
 const edit = {
   // Show diff in your IDE and get user approval
-  previewAndApplyEdits: async (operation) => {
-    return await showDiffDialog(operation)
+  applyEdits: async (operation) => {
+    // ...
   },
 }
 

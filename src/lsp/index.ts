@@ -1,5 +1,5 @@
 /**
- * MCP LSP Driver – LSP Client utilities
+ * LSP Client utilities
  *
  * Provides a ready-made LSP client that wraps a language server process and
  * exposes IDE capability providers, plus helpers for converting LSP types to

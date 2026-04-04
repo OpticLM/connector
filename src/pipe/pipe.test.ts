@@ -80,7 +80,6 @@ describe('Pipe IPC - Handshake', () => {
     })
 
     expect(conn.availableMethods).toContain('fileAccess.readFile')
-    expect(conn.availableMethods).toContain('edit.previewAndApplyEdits')
     expect(conn.availableMethods).toContain('definition.provideDefinition')
     expect(conn.availableMethods).toContain('references.provideReferences')
     expect(conn.availableMethods).toContain('hierarchy.provideCallHierarchy')
@@ -208,20 +207,6 @@ describe('Pipe IPC - Round-trip', () => {
       regexMode: false,
     })
     expect(result).toStrictEqual(matches)
-  })
-
-  it('edit.previewAndApplyEdits returns boolean', async () => {
-    const { conn } = await setupPipe({
-      fileAccess: createMockFileAccess(),
-      edit: createMockEditProvider(true),
-    })
-
-    const result = await conn.edit?.previewAndApplyEdits?.({
-      id: 'test-edit',
-      uri: 'path/to/file',
-      edits: [],
-    })
-    expect(result).toBe(true)
   })
 
   it('graph.getLinkStructure returns links', async () => {

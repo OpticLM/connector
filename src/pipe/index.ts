@@ -1,3 +1,9 @@
+/**
+ * Pipe entry point for passing providers between processes.
+ *
+ * @packageDocumentation
+ */
+
 export type {
   connectPipeOptions,
   PipeConnection,

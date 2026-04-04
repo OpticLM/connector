@@ -1,13 +1,8 @@
 /**
- * Core Data Models for MCP LSP Driver SDK
+ * Core Data Models
  *
- * These types define how the LLM communicates intent versus
- * how the IDE executes commands.
+ * These types define how the LLM communicates intent versus how the IDE executes commands.
  */
-
-// ============================================================================
-// Location Types
-// ============================================================================
 
 /**
  * A Unified Resource Identifier.
@@ -69,30 +64,18 @@ export interface CodeSnippet {
   content: string
 }
 
-// ============================================================================
-// Edit Types
-// ============================================================================
-
-/**
- * Represents a proposed change to a file.
- */
-export interface TextEdit {
-  /** The range to replace */
-  range: DiskRange
-  /** The new text to insert */
-  newText: string
-}
-
 /**
  * Represents a pending edit operation that awaits user approval.
+ * The SDK resolves edits against the current file content and provides
+ * the fully updated file text, so plugins only need to write the result.
  */
 export interface PendingEditOperation {
   /** Unique identifier for this operation */
   id: string
   /** The URI of the file to edit */
   uri: UnifiedUri
-  /** The list of edits to apply */
-  edits: TextEdit[]
+  /** The full updated content of the file after applying the edit */
+  updated: string
   /** Optional description of the edit (e.g., "Refactor logic to handle null cases") */
   description?: string
 }
@@ -103,9 +86,16 @@ export interface PendingEditOperation {
 export type EditFailureReason = 'UserRejected' | 'IOError' | 'ValidationFailed'
 
 /**
- * The result of an edit operation.
+ * The result of editing a file.
+ * The edit may be automatically approved, or it may require user approval;
+ * the user may reject it, approve it, or make changes based on the existing edit.
  */
-export type EditResult = { success: boolean; message: string }
+export type EditResult =
+  | { type: EditFailureReason }
+  | {
+      type: 'Approved'
+      updated: string
+    }
 
 // ============================================================================
 // Diagnostic Types

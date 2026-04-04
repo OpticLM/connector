@@ -1,5 +1,5 @@
 /**
- * Smart Resolver Logic for MCP LSP Driver SDK
+ * Smart Resolver Logic
  *
  * This is the internal engine of the SDK. It translates the LLM's imprecise
  * instructions into precise coordinates.

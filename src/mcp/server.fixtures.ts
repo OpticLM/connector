@@ -19,6 +19,7 @@ import type {
   CodeSnippet,
   Diagnostic,
   DocumentSymbol,
+  EditResult,
   Frontmatter,
   FrontmatterMatch,
   FrontmatterValue,
@@ -105,9 +106,11 @@ export function createMockOutlineProvider(
   }
 }
 
-export function createMockEditProvider(approved = true): EditProvider {
+export function createMockEditProvider(
+  result: EditResult = { type: 'Approved', updated: '' },
+): EditProvider {
   return {
-    previewAndApplyEdits: vi.fn(async () => approved),
+    applyEdits: vi.fn(async (_operation): Promise<EditResult> => result),
   }
 }
 
