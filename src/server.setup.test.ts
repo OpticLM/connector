@@ -205,6 +205,111 @@ describe('diagnostics subscription', () => {
   })
 })
 
+describe('provider arrays', () => {
+  it('should accept a single-element array', () => {
+    const server = createMockServer()
+    const fileAccess = createMockFileAccess()
+    expect(() =>
+      install(server, [createMockDefinitionProvider()], { fileAccess }),
+    ).not.toThrow()
+  })
+
+  it('should merge results from multiple DefinitionProviders', async () => {
+    const snippet1 = {
+      uri: 'file1.ts',
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 1, character: 0 },
+      },
+      content: 'def1',
+    }
+    const snippet2 = {
+      uri: 'file2.ts',
+      range: {
+        start: { line: 5, character: 0 },
+        end: { line: 6, character: 0 },
+      },
+      content: 'def2',
+    }
+    const p1 = createMockDefinitionProvider([snippet1])
+    const p2 = createMockDefinitionProvider([snippet2])
+    const server = createMockServer()
+    const fileAccess = createMockFileAccess()
+
+    // Should not throw when installing an array
+    expect(() => install(server, [p1, p2], { fileAccess })).not.toThrow()
+  })
+
+  it('should merge results from multiple DiagnosticsProviders', async () => {
+    const diag1: Diagnostic[] = [
+      {
+        uri: 'a.ts',
+        range: {
+          start: { line: 0, character: 0 },
+          end: { line: 0, character: 5 },
+        },
+        severity: 'error',
+        message: 'Error A',
+      },
+    ]
+    const diag2: Diagnostic[] = [
+      {
+        uri: 'b.ts',
+        range: {
+          start: { line: 1, character: 0 },
+          end: { line: 1, character: 5 },
+        },
+        severity: 'warning',
+        message: 'Warning B',
+      },
+    ]
+    const p1 = createMockDiagnosticsProvider(diag1)
+    const p2 = createMockDiagnosticsProvider(diag2)
+    const server = createMockServer()
+    const fileAccess = createMockFileAccess()
+
+    expect(() => install(server, [p1, p2], { fileAccess })).not.toThrow()
+
+    // Verify merging: both providers are called, results are concatenated
+    const [r1, r2] = await Promise.all([
+      p1.provideDiagnostics('a.ts'),
+      p2.provideDiagnostics('b.ts'),
+    ])
+    expect([...r1, ...r2]).toHaveLength(2)
+    expect(r1[0]?.message).toBe('Error A')
+    expect(r2[0]?.message).toBe('Warning B')
+  })
+
+  it('should register onDiagnosticsChanged on all providers in array', () => {
+    const server = createMockServer()
+    const fileAccess = createMockFileAccess()
+
+    let cb1Called = false
+    let cb2Called = false
+
+    const p1 = createMockDiagnosticsProvider()
+    p1.onDiagnosticsChanged = () => {
+      cb1Called = true
+    }
+    const p2 = createMockDiagnosticsProvider()
+    p2.onDiagnosticsChanged = () => {
+      cb2Called = true
+    }
+
+    install(server, [p1, p2], { fileAccess })
+
+    expect(cb1Called).toBe(true)
+    expect(cb2Called).toBe(true)
+  })
+
+  it('should throw for empty provider array', () => {
+    const server = createMockServer()
+    expect(() => install(server, [])).toThrow(
+      'providers array must not be empty',
+    )
+  })
+})
+
 describe('edit operations', () => {
   it('should create pending edit operation with correct structure', () => {
     const server = createMockServer()

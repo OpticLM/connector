@@ -4,7 +4,6 @@ Provides an abstract interface that allows LLMs to connect to fact sources such 
 
 ## Table of Contents
 
-- [Core Philosophy](#core-philosophy)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [MCP Tools](#mcp-tools)
@@ -28,7 +27,9 @@ pnpm add @opticlm/connector
 
 ## Quick Start
 
-Providers are installed one at a time onto an MCP server using `install()` from `@opticlm/connector/mcp`. Each call registers the tools and resources for that specific provider. Providers that depend on file access (definition, references, hierarchy, edit) receive a `fileAccess` option.
+Providers are installed onto an MCP server using `install()` from `@opticlm/connector/mcp`. Each call registers the tools and resources for that specific provider. Providers that depend on file access (definition, references, hierarchy, edit) receive a `fileAccess` option.
+
+You can pass a single provider or an array of providers of the same type. When an array is given, their results are merged automatically — array-returning methods (e.g. `provideDefinition`) are concatenated, void methods are called on all providers in parallel, and callback registrars (e.g. `onDiagnosticsChanged`) are registered on every provider in the array.
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -90,6 +91,10 @@ install(server, edit, { fileAccess })
 install(server, definition, { fileAccess })
 install(server, diagnostics, { fileAccess })
 install(server, outline, { fileAccess })
+
+// You can also pass an array to merge multiple providers of the same type:
+// install(server, [definition, anotherDefinition], { fileAccess })
+// install(server, [diagnostics, anotherDiagnostics], { fileAccess })
 
 // 6. Connect to transport (you control the server lifecycle)
 const transport = new StdioServerTransport()

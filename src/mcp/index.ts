@@ -49,6 +49,195 @@ import {
 } from '../server.js'
 import type { EditResult, FrontmatterMatch, Link } from '../types.js'
 
+// ============================================================================
+// Provider merging
+// ============================================================================
+
+function mergeProviders(providers: AnyProvider[]): AnyProvider {
+  if (providers.length <= 0)
+    throw new Error('providers array must not be empty')
+  if (providers.length === 1 && providers[0]) return providers[0]
+
+  const first = providers[0]
+  if (!first)
+    throw new Error('The first item of providers array must be defined')
+
+  // FileAccessProvider: readFile + readDirectory
+  if ('readFile' in first && 'readDirectory' in first) {
+    const ps = providers as FileAccessProvider[]
+    const merged: FileAccessProvider = {
+      readFile: (uri) => (first as FileAccessProvider).readFile(uri),
+      readDirectory: (uri) => (first as FileAccessProvider).readDirectory(uri),
+    }
+    if (ps.some((p) => p.onFileChanged)) {
+      merged.onFileChanged = (cb) => {
+        for (const p of ps) p.onFileChanged?.(cb)
+      }
+    }
+    return merged
+  }
+
+  // EditProvider: applyEdits or previewAndApplyEdits — use first
+  if ('applyEdits' in first || 'previewAndApplyEdits' in first) {
+    return first
+  }
+
+  // DefinitionProvider: provideDefinition
+  if ('provideDefinition' in first) {
+    const ps = providers as DefinitionProvider[]
+    const merged: DefinitionProvider = {
+      async provideDefinition(uri, position) {
+        const results = await Promise.all(
+          ps.map((p) => p.provideDefinition(uri, position)),
+        )
+        return results.flat()
+      },
+    }
+    if (ps.some((p) => p.provideTypeDefinition)) {
+      merged.provideTypeDefinition = async (uri, position) => {
+        const withMethod = ps.filter((p) => p.provideTypeDefinition)
+        const results = await Promise.all(
+          // biome-ignore lint/style/noNonNullAssertion: filter ensures
+          withMethod.map((p) => p.provideTypeDefinition!(uri, position)),
+        )
+        return results.flat()
+      }
+    }
+    return merged
+  }
+
+  // ReferencesProvider: provideReferences
+  if ('provideReferences' in first) {
+    const ps = providers as ReferencesProvider[]
+    return {
+      async provideReferences(uri, position) {
+        const results = await Promise.all(
+          ps.map((p) => p.provideReferences(uri, position)),
+        )
+        return results.flat()
+      },
+    } satisfies ReferencesProvider
+  }
+
+  // HierarchyProvider: provideCallHierarchy
+  if ('provideCallHierarchy' in first) {
+    const ps = providers as HierarchyProvider[]
+    return {
+      async provideCallHierarchy(uri, position, direction) {
+        const results = await Promise.all(
+          ps.map((p) => p.provideCallHierarchy(uri, position, direction)),
+        )
+        return results.flat()
+      },
+    } satisfies HierarchyProvider
+  }
+
+  // DiagnosticsProvider: provideDiagnostics
+  if ('provideDiagnostics' in first) {
+    const ps = providers as DiagnosticsProvider[]
+    const merged: DiagnosticsProvider = {
+      async provideDiagnostics(uri) {
+        const results = await Promise.all(
+          ps.map((p) => p.provideDiagnostics(uri)),
+        )
+        return results.flat()
+      },
+    }
+    if (ps.some((p) => p.getWorkspaceDiagnostics)) {
+      merged.getWorkspaceDiagnostics = async () => {
+        const withMethod = ps.filter((p) => p.getWorkspaceDiagnostics)
+        const results = await Promise.all(
+          // biome-ignore lint/style/noNonNullAssertion: filter ensures
+          withMethod.map((p) => p.getWorkspaceDiagnostics!()),
+        )
+        return results.flat()
+      }
+    }
+    if (ps.some((p) => p.onDiagnosticsChanged)) {
+      merged.onDiagnosticsChanged = (cb) => {
+        for (const p of ps) p.onDiagnosticsChanged?.(cb)
+      }
+    }
+    return merged
+  }
+
+  // OutlineProvider: provideDocumentSymbols
+  if ('provideDocumentSymbols' in first) {
+    const ps = providers as OutlineProvider[]
+    return {
+      async provideDocumentSymbols(uri) {
+        const results = await Promise.all(
+          ps.map((p) => p.provideDocumentSymbols(uri)),
+        )
+        return results.flat()
+      },
+    } satisfies OutlineProvider
+  }
+
+  // GlobalFindProvider: globalFind
+  if ('globalFind' in first) {
+    const ps = providers as GlobalFindProvider[]
+    return {
+      async globalFind(query, options) {
+        const results = await Promise.all(
+          ps.map((p) => p.globalFind(query, options)),
+        )
+        return results.flat()
+      },
+    } satisfies GlobalFindProvider
+  }
+
+  // GraphProvider: getLinkStructure
+  if ('getLinkStructure' in first) {
+    const ps = providers as GraphProvider[]
+    return {
+      async getLinkStructure() {
+        const results = await Promise.all(ps.map((p) => p.getLinkStructure()))
+        return results.flat()
+      },
+      async resolveOutlinks(path) {
+        const results = await Promise.all(
+          ps.map((p) => p.resolveOutlinks(path)),
+        )
+        return results.flat()
+      },
+      async resolveBacklinks(path) {
+        const results = await Promise.all(
+          ps.map((p) => p.resolveBacklinks(path)),
+        )
+        return results.flat()
+      },
+      async addLink(path, pattern, linkTo) {
+        await Promise.all(ps.map((p) => p.addLink(path, pattern, linkTo)))
+      },
+    } satisfies GraphProvider
+  }
+
+  // FrontmatterProvider: getFrontmatterStructure
+  if ('getFrontmatterStructure' in first) {
+    const ps = providers as FrontmatterProvider[]
+    return {
+      async getFrontmatterStructure(property, path) {
+        const results = await Promise.all(
+          ps.map((p) => p.getFrontmatterStructure(property, path)),
+        )
+        return results.flat()
+      },
+      async getFrontmatter(path) {
+        const results = await Promise.all(ps.map((p) => p.getFrontmatter(path)))
+        return Object.assign({}, ...results)
+      },
+      async setFrontmatter(path, property, value) {
+        await Promise.all(
+          ps.map((p) => p.setFrontmatter(path, property, value)),
+        )
+      },
+    } satisfies FrontmatterProvider
+  }
+
+  return first
+}
+
 /**
  * Union of all provider types that can be installed on an MCP server.
  */
@@ -162,6 +351,10 @@ export interface FrontmatterInstallOptions extends InstallOptions {
 /**
  * Install a provider's tools and resources onto an MCP server.
  *
+ * Accepts a single provider or an array of providers of the same type. When an array is
+ * passed, their results are merged: array-returning methods are concatenated, void methods
+ * are called on all providers in parallel, and callback registrars are registered on all.
+ *
  * The provider type is detected via duck-typing (checking for characteristic methods).
  * Some providers require `fileAccess` in options:
  * - `DefinitionProvider`, `ReferencesProvider`, `HierarchyProvider` need it for symbol resolution
@@ -170,59 +363,60 @@ export interface FrontmatterInstallOptions extends InstallOptions {
  */
 export function install(
   server: McpServer,
-  provider: FileAccessProvider,
+  provider: FileAccessProvider | FileAccessProvider[],
   options?: InstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: EditProvider,
+  provider: EditProvider | EditProvider[],
   options?: EditInstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: DefinitionProvider,
+  provider: DefinitionProvider | DefinitionProvider[],
   options?: DefinitionInstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: ReferencesProvider,
+  provider: ReferencesProvider | ReferencesProvider[],
   options?: ReferencesInstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: HierarchyProvider,
+  provider: HierarchyProvider | HierarchyProvider[],
   options?: HierarchyInstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: DiagnosticsProvider,
+  provider: DiagnosticsProvider | DiagnosticsProvider[],
   options?: InstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: OutlineProvider,
+  provider: OutlineProvider | OutlineProvider[],
   options?: InstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: GlobalFindProvider,
+  provider: GlobalFindProvider | GlobalFindProvider[],
   options?: GlobalFindInstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: GraphProvider,
+  provider: GraphProvider | GraphProvider[],
   options?: GraphInstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: FrontmatterProvider,
+  provider: FrontmatterProvider | FrontmatterProvider[],
   options?: FrontmatterInstallOptions,
 ): void
 export function install(
   server: McpServer,
-  provider: AnyProvider,
+  provider: AnyProvider | AnyProvider[],
   options?: InstallOptions,
 ): void {
+  const resolved = Array.isArray(provider) ? mergeProviders(provider) : provider
   const fileAccess = options?.fileAccess
   const fileCompleter = fileAccess
     ? createFileCompleter(fileAccess.readDirectory)
@@ -238,13 +432,13 @@ export function install(
   }
 
   // FileAccessProvider: readFile + readDirectory
-  if ('readFile' in provider && 'readDirectory' in provider) {
-    registerFilesystemResource(server, provider as FileAccessProvider)
+  if ('readFile' in resolved && 'readDirectory' in resolved) {
+    registerFilesystemResource(server, resolved as FileAccessProvider)
     return
   }
 
   // EditProvider: applyEdits or previewAndApplyEdits
-  if ('applyEdits' in provider || 'previewAndApplyEdits' in provider) {
+  if ('applyEdits' in resolved || 'previewAndApplyEdits' in resolved) {
     if (!fileAccess) {
       throw new Error(
         'fileAccess is required in options when installing an EditProvider',
@@ -253,7 +447,7 @@ export function install(
     const opts = options as EditInstallOptions | undefined
     registerApplyEditTool(
       server,
-      provider as EditProvider,
+      resolved as EditProvider,
       fileAccess.readFile,
       {
         onInput: opts?.onEditInput,
@@ -264,8 +458,8 @@ export function install(
   }
 
   // DefinitionProvider: provideDefinition
-  if ('provideDefinition' in provider) {
-    const defProvider = provider as DefinitionProvider
+  if ('provideDefinition' in resolved) {
+    const defProvider = resolved as DefinitionProvider
     const opts = options as DefinitionInstallOptions | undefined
     const resolver = createResolver()
     registerGotoDefinitionTool(server, defProvider, resolver, {
@@ -282,11 +476,11 @@ export function install(
   }
 
   // ReferencesProvider: provideReferences
-  if ('provideReferences' in provider) {
+  if ('provideReferences' in resolved) {
     const opts = options as ReferencesInstallOptions | undefined
     registerFindReferencesTool(
       server,
-      provider as ReferencesProvider,
+      resolved as ReferencesProvider,
       createResolver(),
       {
         onInput: opts?.onReferencesInput,
@@ -297,11 +491,11 @@ export function install(
   }
 
   // HierarchyProvider: provideCallHierarchy
-  if ('provideCallHierarchy' in provider) {
+  if ('provideCallHierarchy' in resolved) {
     const opts = options as HierarchyInstallOptions | undefined
     registerCallHierarchyTool(
       server,
-      provider as HierarchyProvider,
+      resolved as HierarchyProvider,
       createResolver(),
       {
         onInput: opts?.onCallHierarchyInput,
@@ -312,25 +506,25 @@ export function install(
   }
 
   // DiagnosticsProvider: provideDiagnostics
-  if ('provideDiagnostics' in provider) {
+  if ('provideDiagnostics' in resolved) {
     registerDiagnosticsResources(
       server,
-      provider as DiagnosticsProvider,
+      resolved as DiagnosticsProvider,
       fileCompleter,
     )
     return
   }
 
   // OutlineProvider: provideDocumentSymbols
-  if ('provideDocumentSymbols' in provider) {
-    registerOutlineResource(server, provider as OutlineProvider, fileCompleter)
+  if ('provideDocumentSymbols' in resolved) {
+    registerOutlineResource(server, resolved as OutlineProvider, fileCompleter)
     return
   }
 
   // GlobalFindProvider: globalFind
-  if ('globalFind' in provider) {
+  if ('globalFind' in resolved) {
     const opts = options as GlobalFindInstallOptions | undefined
-    registerGlobalFindTool(server, provider as GlobalFindProvider, {
+    registerGlobalFindTool(server, resolved as GlobalFindProvider, {
       onInput: opts?.onGlobalFindInput,
       onOutput: opts?.onGlobalFindOutput,
     })
@@ -338,8 +532,8 @@ export function install(
   }
 
   // GraphProvider: getLinkStructure
-  if ('getLinkStructure' in provider) {
-    const graphProvider = provider as GraphProvider
+  if ('getLinkStructure' in resolved) {
+    const graphProvider = resolved as GraphProvider
     const opts = options as GraphInstallOptions | undefined
     registerGetLinkStructureTool(server, graphProvider, {
       onOutput: opts?.onLinkStructureOutput,
@@ -353,8 +547,8 @@ export function install(
   }
 
   // FrontmatterProvider: getFrontmatterStructure
-  if ('getFrontmatterStructure' in provider) {
-    const fmProvider = provider as FrontmatterProvider
+  if ('getFrontmatterStructure' in resolved) {
+    const fmProvider = resolved as FrontmatterProvider
     const opts = options as FrontmatterInstallOptions | undefined
     registerGetFrontmatterStructureTool(server, fmProvider, {
       onInput: opts?.onFrontmatterStructureInput,
