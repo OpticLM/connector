@@ -17,9 +17,9 @@ import {
   mockCodeSnippet,
 } from '../mcp/server.fixtures.js'
 import type { Diagnostic } from '../types.js'
-import { connectPipe, type LspPipeConnection } from './pipe-client.js'
+import { connectPipe, type PipeConnection } from './pipe-client.js'
 import {
-  type LspPipeServer,
+  type PipeServer,
   servePipe,
   type servePipeOptions,
 } from './pipe-server.js'
@@ -28,8 +28,8 @@ function uniquePipeName(): string {
   return `mcp-lsp-test-${nanoid()}`
 }
 
-const servers: LspPipeServer[] = []
-const connections: LspPipeConnection[] = []
+const servers: PipeServer[] = []
+const connections: PipeConnection[] = []
 
 afterEach(async () => {
   for (const c of connections) {

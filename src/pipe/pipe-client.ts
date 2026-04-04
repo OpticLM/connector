@@ -17,7 +17,7 @@ export interface connectPipeOptions {
   connectTimeout?: number
 }
 
-export interface LspPipeConnection {
+export interface PipeConnection {
   readonly fileAccess?: FileAccessProvider
   readonly edit?: EditProvider
   readonly definition?: DefinitionProvider
@@ -34,7 +34,7 @@ export interface LspPipeConnection {
 
 export function connectPipe(
   options: connectPipeOptions,
-): Promise<LspPipeConnection> {
+): Promise<PipeConnection> {
   const { pipeName, connectTimeout = 5000 } = options
   const pipePath = toPipePath(pipeName)
 

@@ -27,7 +27,7 @@ export interface servePipeOptions {
   frontmatter?: FrontmatterProvider
 }
 
-export interface LspPipeServer {
+export interface PipeServer {
   readonly pipePath: string
   readonly connectionCount: number
   close(): Promise<void>
@@ -35,7 +35,7 @@ export interface LspPipeServer {
 
 type MethodHandler = (...args: unknown[]) => Promise<unknown>
 
-export function servePipe(options: servePipeOptions): Promise<LspPipeServer> {
+export function servePipe(options: servePipeOptions): Promise<PipeServer> {
   const { pipeName } = options
   const pipePath = toPipePath(pipeName)
 
