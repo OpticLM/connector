@@ -21,19 +21,18 @@ export type {
   OutlineProvider,
   ReferencesProvider,
 } from './capabilities.js'
+
 // Infrastructure Interfaces
 export type {
   EditProvider,
   FileAccessProvider,
 } from './interfaces.js'
-export type { connectPipeOptions, LspPipeConnection } from './pipe-client.js'
-export { connectPipe } from './pipe-client.js'
-export type { LspPipeServer, servePipeOptions } from './pipe-server.js'
-// Pipe IPC
-export { servePipe } from './pipe-server.js'
+
 export type { ResolverConfig } from './resolver.js'
+
 // Symbol Resolver
 export { SymbolResolutionError, SymbolResolver } from './resolver.js'
+
 // Core Data Models
 export type {
   CodeSnippet,

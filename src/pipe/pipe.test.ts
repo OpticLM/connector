@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { install } from './mcp/index.js'
+import { install } from '../mcp/index.js'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
@@ -15,14 +15,14 @@ import {
   createMockReferencesProvider,
   createMockServer,
   mockCodeSnippet,
-} from './mcp/server.fixtures.js'
+} from '../mcp/server.fixtures.js'
+import type { Diagnostic } from '../types.js'
 import { connectPipe, type LspPipeConnection } from './pipe-client.js'
 import {
   type LspPipeServer,
   servePipe,
   type servePipeOptions,
 } from './pipe-server.js'
-import type { Diagnostic } from './types.js'
 
 function uniquePipeName(): string {
   return `mcp-lsp-test-${nanoid()}`

@@ -9,8 +9,8 @@ import type {
   HierarchyProvider,
   OutlineProvider,
   ReferencesProvider,
-} from './capabilities.js'
-import type { EditProvider, FileAccessProvider } from './interfaces.js'
+} from '../capabilities.js'
+import type { EditProvider, FileAccessProvider } from '../interfaces.js'
 import { PipeTransport, PROVIDER_METHODS, toPipePath } from './pipe-protocol.js'
 
 export interface servePipeOptions {

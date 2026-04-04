@@ -343,7 +343,7 @@ When the MCP server runs in a separate process from the IDE plugin (e.g., spawne
 **IDE plugin side** — expose providers:
 
 ```typescript
-import { servePipe } from '@opticlm/connector'
+import { servePipe } from '@opticlm/connector/pipe'
 
 const server = await servePipe({
   pipeName: 'my-ide-lsp',
@@ -361,7 +361,7 @@ const server = await servePipe({
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { connectPipe } from '@opticlm/connector'
+import { connectPipe } from '@opticlm/connector/pipe'
 import { install } from '@opticlm/connector/mcp'
 
 const conn = await connectPipe({

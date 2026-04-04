@@ -1,6 +1,5 @@
 /**
  * Zod schemas for MCP tool inputs and outputs.
- * @internal
  */
 
 import { z } from 'zod'

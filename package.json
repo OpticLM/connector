@@ -1,6 +1,6 @@
 {
   "name": "@opticlm/connector",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Provides an abstract interface that allows LLMs to connect to fact sources such as LSPs, code diagnostics, symbol definitions/references, links, and frontmatter",
   "type": "module",
   "types": "dist/index.d.ts",
@@ -16,6 +16,10 @@
     "./mcp": {
       "types": "./dist/mcp/index.d.ts",
       "default": "./dist/mcp/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas.d.ts",
+      "default": "./dist/schemas.js"
     }
   },
   "files": ["dist/**/*.js", "dist/**/*.d.ts", "LICENSE"],
