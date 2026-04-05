@@ -1,4 +1,4 @@
-import type { InferUITool } from 'ai'
+import type { InferUITool, UITools } from 'ai'
 import type {
   addLink,
   applyEdit,
@@ -71,7 +71,7 @@ export type GlobalFindTool = InferUITool<ReturnType<typeof globalFind>>
 /**
  * Full set of typed tools provided by the connector.
  */
-export interface ConnectorTools {
+export interface ConnectorTools extends UITools {
   [GotoDefinitionName]: GotoDefinitionTool
   [GotoTypeDefinitionName]: GotoTypeDefinitionTool
   [FindReferencesName]: FindReferencesTool
