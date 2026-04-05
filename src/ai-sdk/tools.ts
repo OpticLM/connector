@@ -10,7 +10,7 @@ import type {
   OutlineProvider,
   ReferencesProvider,
 } from '../capabilities.js'
-import { normalizeUri } from '../formatting.js'
+import { generateEditId, normalizeUri } from '../formatting.js'
 import { formatAsHashlines, toNumberedLines } from '../hashline.js'
 import type { EditProvider, FileAccessProvider } from '../interfaces.js'
 import type { SymbolResolver } from '../resolver.js'
@@ -191,8 +191,13 @@ export const applyEdit = (
     inputSchema: ApplyEditSchema,
     execute: async (params) => {
       try {
-        const operation = await dryRunEdit(params, fileAccess.readFile)
-        return await provider.applyEdits(operation)
+        const { updated } = await dryRunEdit(params, fileAccess.readFile)
+        return await provider.applyEdits({
+          id: generateEditId(),
+          uri: params.uri,
+          description: params.description,
+          updated,
+        })
       } catch (error) {
         return errorResult(error)
       }

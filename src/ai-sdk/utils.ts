@@ -1,9 +1,8 @@
 import type z from 'zod'
-import { generateEditId, normalizeUri } from '../formatting.js'
+import { normalizeUri } from '../formatting.js'
 import { computeLineHash, parseHashlineRef } from '../hashline.js'
 import type { FileAccessProvider } from '../interfaces.js'
 import type { ApplyEditSchema } from '../schemas.js'
-import type { PendingEditOperation } from '../types.js'
 
 export const dryRunEdit = async (
   params: z.infer<typeof ApplyEditSchema>,
@@ -50,12 +49,5 @@ export const dryRunEdit = async (
     '\n',
   )
 
-  const operation: PendingEditOperation = {
-    id: generateEditId(),
-    uri,
-    updated,
-    description: params.description,
-  }
-
-  return operation
+  return { content, updated }
 }
