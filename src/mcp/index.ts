@@ -17,6 +17,7 @@ import type {
   OutlineProvider,
   ReferencesProvider,
 } from '../capabilities.js'
+import { createFileCompleter } from '../completer.js'
 import type { EditProvider, FileAccessProvider } from '../interfaces.js'
 import type { ResolverConfig } from '../resolver.js'
 import { SymbolResolver } from '../resolver.js'
@@ -32,7 +33,6 @@ import type {
 } from '../schemas.js'
 import type { EditResult, FrontmatterMatch, Link } from '../types.js'
 import {
-  createFileCompleter,
   registerAddLinkTool,
   registerApplyEditTool,
   registerCallHierarchyTool,

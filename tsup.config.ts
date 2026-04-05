@@ -6,6 +6,7 @@ export default defineConfig({
     'src/lsp/index.ts',
     'src/mcp/index.ts',
     'src/pipe/index.ts',
+    'src/ai-sdk/index.ts',
     'src/schemas.ts',
   ],
   format: ['esm'],

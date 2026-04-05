@@ -20,13 +20,13 @@ export type {
   OutlineProvider,
   ReferencesProvider,
 } from './capabilities.js'
+export { createFileCompleter } from './completer.js'
 
 // Infrastructure Interfaces
 export type {
   EditProvider,
   FileAccessProvider,
 } from './interfaces.js'
-
 export type { ResolverConfig } from './resolver.js'
 
 // Symbol Resolver

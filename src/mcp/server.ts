@@ -21,6 +21,7 @@ import type {
   OutlineProvider,
   ReferencesProvider,
 } from '../capabilities.js'
+import { createFileCompleter } from '../completer.js'
 import {
   formatDiagnosticsAsMarkdown,
   formatSymbolsAsMarkdown,
@@ -35,6 +36,24 @@ import {
   toNumberedLines,
 } from '../hashline.js'
 import type { EditProvider, FileAccessProvider } from '../interfaces.js'
+import { SymbolResolutionError, type SymbolResolver } from '../resolver.js'
+import {
+  AddLinkSchema,
+  ApplyEditSchema,
+  CallHierarchySchema,
+  FileReferencesSchema,
+  FuzzyPositionSchema,
+  GetFrontmatterStructureSchema,
+  GlobalFindSchema,
+  SetFrontmatterSchema,
+} from '../schemas.js'
+import type {
+  EditResult,
+  FrontmatterMatch,
+  FuzzyPosition,
+  Link,
+  PendingEditOperation,
+} from '../types.js'
 
 /**
  * Parses a line range fragment from a URI (e.g., "#L21" or "#L21-L28").
@@ -72,56 +91,6 @@ function parseQueryParams(path: string): {
     params: new URLSearchParams(path.slice(qIndex + 1)),
   }
 }
-
-/**
- * Creates a completion callback for file path auto-complete.
- * Splits the input into directory + prefix, reads the directory,
- * and returns entries matching the prefix.
- */
-export function createFileCompleter(
-  readDirectory: FileAccessProvider['readDirectory'],
-): (value: string) => Promise<string[]> {
-  return async (value: string): Promise<string[]> => {
-    const lastSlash = value.lastIndexOf('/')
-    const dir = lastSlash >= 0 ? value.slice(0, lastSlash) : ''
-    const prefix = lastSlash >= 0 ? value.slice(lastSlash + 1) : value
-
-    try {
-      const entries = await readDirectory(dir || '.')
-      const lowerPrefix = prefix.toLowerCase()
-      return entries
-        .filter((entry) => entry.toLowerCase().startsWith(lowerPrefix))
-        .map((entry) => (dir ? `${dir}/${entry}` : entry))
-    } catch {
-      return []
-    }
-  }
-}
-
-import {
-  type ResolverConfig,
-  SymbolResolutionError,
-  type SymbolResolver,
-} from '../resolver.js'
-import {
-  AddLinkSchema,
-  ApplyEditSchema,
-  CallHierarchySchema,
-  FileReferencesSchema,
-  FuzzyPositionSchema,
-  GetFrontmatterStructureSchema,
-  GlobalFindSchema,
-  SetFrontmatterSchema,
-} from '../schemas.js'
-import type {
-  EditResult,
-  FrontmatterMatch,
-  FuzzyPosition,
-  Link,
-  PendingEditOperation,
-} from '../types.js'
-
-export type { ResolverConfig }
 
 type SnippetOutput = {
   snippets: Array<{

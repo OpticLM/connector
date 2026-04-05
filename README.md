@@ -1,12 +1,14 @@
 # @opticlm/connector
 
-Provides an abstract interface that allows LLMs to connect to fact sources such as LSPs, code diagnostics, symbol definitions/references, links, and frontmatter; currently includes an MCP implementation.
+Provides an abstract interface that allows LLMs to connect to fact sources such as LSPs, code diagnostics, symbol definitions/references, links, and frontmatter; includes both an MCP implementation and a Vercel AI SDK implementation.
 
 ## Table of Contents
 
 - [Installation](#installation)
-- [Quick Start](#quick-start)
+- [MCP Quick Start](#mcp-quick-start)
+- [AI SDK Quick Start](#ai-sdk-quick-start)
 - [MCP Tools](#mcp-tools)
+- [AI SDK Tools](#ai-sdk-tools)
 - [Tool Callbacks](#tool-callbacks)
 - [MCP Resources](#mcp-resources)
 - [Auto-Complete for File Paths](#auto-complete-for-file-paths)
@@ -25,7 +27,7 @@ npm install @opticlm/connector
 pnpm add @opticlm/connector
 ```
 
-## Quick Start
+## MCP Quick Start
 
 Providers are installed onto an MCP server using `install()` from `@opticlm/connector/mcp`. Each call registers the tools and resources for that specific provider. Providers that depend on file access (definition, references, hierarchy, edit) receive a `fileAccess` option.
 
@@ -100,6 +102,71 @@ await server.connect(transport)
 
 Each `install()` call is independent — only install the providers your IDE actually supports. The `fileAccess` option is required for providers that read files (edit, definition, references, hierarchy) and is used optionally by others for path auto-complete.
 
+## AI SDK Quick Start
+
+The `@opticlm/connector/ai-sdk` entry point exports typed tool factories for the [Vercel AI SDK](https://sdk.vercel.ai/). Each factory takes the required providers and returns a tool that can be passed directly to `generateText`, `streamText`, or `useChat`.
+
+Resources from the MCP implementation are replaced by explicit tool calls that accept the same parameters as query arguments.
+
+```typescript
+import { generateText } from 'ai'
+import { openai } from '@ai-sdk/openai'
+import {
+  gotoDefinition,
+  findReferences,
+  getDiagnostics,
+  getWorkspaceDiagnostics,
+  getOutline,
+  requestFile,
+  applyEdit,
+  globalFind,
+  getOutlinks,
+  getBacklinks,
+  getLinkStructure,
+  addLink,
+  getFrontmatter,
+  getFrontmatterStructure,
+  setFrontmatter,
+} from '@opticlm/connector/ai-sdk'
+import { SymbolResolver } from '@opticlm/connector'
+import * as fs from 'fs/promises'
+
+// 1. Set up providers
+const fileAccess = {
+  readFile: async (uri: string) => fs.readFile(uri, 'utf-8'),
+  readDirectory: async (path: string) => yourIDE.readDirectory(path),
+}
+const edit = {
+  applyEdits: async (operation) => yourIDE.applyEdits(operation),
+}
+const definition = {
+  provideDefinition: async (uri, position) => lsp.getDefinition(uri, position),
+}
+
+// 2. Create a resolver (shared across tools)
+const resolver = new SymbolResolver(fileAccess)
+
+// 3. Build the tools object
+const tools = {
+  goto_definition: gotoDefinition(definition, resolver),
+  apply_edit: applyEdit(edit, fileAccess),
+  request_file: requestFile(fileAccess),
+}
+
+// 4. Use with any AI SDK call
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  tools,
+  messages: [{ role: 'user', content: 'Find all usages of MyClass' }],
+})
+
+// 5. Render typed tools in UI
+import type { ConnectorTools } from '@opticlm/connector/ai-sdk'
+import type { UIMessage, UIDataTypes } from 'ai'
+
+type ChatMessage = UIMessage<unknown, UIDataTypes, ConnectorTools>
+```
+
 ## MCP Tools
 
 The SDK automatically registers tools based on which providers you install:
@@ -147,6 +214,89 @@ Get frontmatter property values across documents.
 ### `set_frontmatter`
 
 Set a frontmatter property on a document.
+
+## AI SDK Tools
+
+The AI SDK implementation provides the same capabilities as the MCP tools. Resources from MCP become explicit tool calls that accept their parameters directly.
+
+### Navigation & References
+
+| Tool factory | Tool name | Description |
+|---|---|---|
+| `gotoDefinition(provider, resolver)` | `goto_definition` | Navigate to a symbol's definition |
+| `gotoTypeDefinition(fn, resolver)` | `goto_type_definition` | Navigate to a symbol's type definition |
+| `findReferences(provider, resolver)` | `find_references` | Find all references to a symbol |
+| `findFileReferences(fn)` | `find_file_references` | Find all imports/links to a file |
+| `callHierarchy(provider, resolver)` | `call_hierarchy` | Incoming or outgoing call hierarchy |
+
+Optional tools (`gotoTypeDefinition`, `findFileReferences`) take the provider method directly — only create them if your provider supports it:
+
+```typescript
+// Only add if your provider has provideTypeDefinition
+if (definition.provideTypeDefinition) {
+  tools.goto_type_definition = gotoTypeDefinition(definition.provideTypeDefinition, resolver)
+}
+```
+
+### Editing
+
+| Tool factory | Tool name | Description |
+|---|---|---|
+| `applyEdit(provider, fileAccess)` | `apply_edit` | Apply a hash-verified edit to a file |
+| `requestFile(fileAccess)` | `request_file` | Read a file (hashline format) or list a directory |
+
+`requestFile` replaces the `files://` MCP resource. It accepts optional `start_line`, `end_line`, and `pattern` parameters instead of URI fragments/query strings:
+
+```typescript
+// Read full file
+{ path: 'src/index.ts' }
+
+// Read lines 10–20
+{ path: 'src/index.ts', start_line: 10, end_line: 20 }
+
+// Filter to import lines only
+{ path: 'src/index.ts', pattern: '^import' }
+```
+
+### Diagnostics
+
+| Tool factory | Tool name | Description |
+|---|---|---|
+| `getDiagnostics(provider)` | `get_diagnostics` | Get diagnostics for a specific file |
+| `getWorkspaceDiagnostics(fn)` | `get_workspace_diagnostics` | Get diagnostics across the workspace |
+
+Returns structured `{ diagnostics: Diagnostic[] }` — the full diagnostic objects, not markdown text.
+
+### Outline
+
+| Tool factory | Tool name | Description |
+|---|---|---|
+| `getOutline(provider)` | `get_outline` | Get document symbols (outline) for a file |
+
+Returns structured `{ symbols: DocumentSymbol[] }` with the full nested symbol tree.
+
+### Graph / Links
+
+| Tool factory | Tool name | Description |
+|---|---|---|
+| `getOutlinks(provider)` | `get_outlinks` | Get outgoing links from a file |
+| `getBacklinks(provider)` | `get_backlinks` | Get incoming links (backlinks) to a file |
+| `getLinkStructure(provider)` | `get_link_structure` | Get all links in the workspace |
+| `addLink(provider)` | `add_link` | Add a link to a document |
+
+### Frontmatter
+
+| Tool factory | Tool name | Description |
+|---|---|---|
+| `getFrontmatter(provider)` | `get_frontmatter` | Get all frontmatter for a file |
+| `getFrontmatterStructure(provider)` | `get_frontmatter_structure` | Query a frontmatter property across documents |
+| `setFrontmatter(provider)` | `set_frontmatter` | Set a frontmatter property (use `null` to remove) |
+
+### Search
+
+| Tool factory | Tool name | Description |
+|---|---|---|
+| `globalFind(provider)` | `global_find` | Search for text across the workspace |
 
 ## Tool Callbacks
 

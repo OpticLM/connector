@@ -1,8 +1,10 @@
 /**
- * Zod schemas for MCP tool inputs and outputs.
+ * Zod schemas for MCP tool inputs and outputs and AI SDK tool inputs.
  */
 
 import { z } from 'zod'
+
+export * from './ai-sdk/schema.js'
 
 const uri = z.string().describe('The relative file path')
 
