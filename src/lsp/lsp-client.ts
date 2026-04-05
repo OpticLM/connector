@@ -67,7 +67,7 @@ interface OpenDocument {
   closeTimer: ReturnType<typeof setTimeout> | null
 }
 
-export class LspClient {
+export class LspClient implements AsyncDisposable {
   private state: LspClientState = 'idle'
   private process: ChildProcess | null = null
   private connection: ProtocolConnection | null = null
@@ -153,6 +153,10 @@ export class LspClient {
     }
 
     this.cleanup()
+  }
+
+  async [Symbol.asyncDispose]() {
+    await this.stop()
   }
 
   async notifyFileChanged(sdkPath: string): Promise<void> {

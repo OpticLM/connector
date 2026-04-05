@@ -31,7 +31,7 @@ interface PipeTransportOptions {
   onNotification?: (method: string, params: unknown[]) => void
 }
 
-export class PipeTransport {
+export class PipeTransport implements Disposable {
   private readonly socket: Socket
   private readonly requestHandler?: (
     method: string,
@@ -82,6 +82,10 @@ export class PipeTransport {
     this.destroyed = true
     this.rejectAll(new Error('Transport destroyed'))
     this.socket.destroy()
+  }
+
+  [Symbol.dispose]() {
+    this.destroy()
   }
 
   private handleData(chunk: Buffer): void {

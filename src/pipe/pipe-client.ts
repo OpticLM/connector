@@ -18,7 +18,7 @@ export interface connectPipeOptions {
   context?: unknown
 }
 
-export interface PipeConnection {
+export interface PipeConnection extends Disposable {
   readonly fileAccess?: FileAccessProvider
   readonly edit?: EditProvider
   readonly definition?: DefinitionProvider
@@ -98,7 +98,8 @@ export function connectPipe(
           }
 
           settled = true
-          resolve({
+
+          const pipeConnection: PipeConnection = {
             fileAccess: built.fileAccess as FileAccessProvider | undefined,
             edit: built.edit as EditProvider | undefined,
             definition: built.definition as DefinitionProvider | undefined,
@@ -113,7 +114,12 @@ export function connectPipe(
             disconnect() {
               transport.destroy()
             },
-          })
+            [Symbol.dispose]() {
+              this.disconnect()
+            },
+          }
+
+          resolve(pipeConnection)
         })
         .catch((err: unknown) => {
           if (!settled) {

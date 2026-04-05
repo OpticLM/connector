@@ -31,7 +31,7 @@ export interface ServePipeOptions {
   createProviders: (context: unknown) => ProviderSet | Promise<ProviderSet>
 }
 
-export interface PipeServer {
+export interface PipeServer extends AsyncDisposable {
   readonly pipePath: string
   readonly connectionCount: number
   close(): Promise<void>
@@ -106,7 +106,7 @@ export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
     server.listen(pipePath, () => {
       server.removeListener('error', reject)
 
-      resolve({
+      const pipeServer: PipeServer = {
         get pipePath() {
           return pipePath
         },
@@ -132,7 +132,12 @@ export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
             }
           }
         },
-      })
+        async [Symbol.asyncDispose]() {
+          await this.close()
+        },
+      }
+
+      resolve(pipeServer)
     })
   })
 }
