@@ -66,16 +66,11 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
 
   // FileAccessProvider: readFile + readDirectory
   if ('readFile' in first && 'readDirectory' in first) {
-    const ps = providers as FileAccessProvider[]
     const merged: FileAccessProvider = {
       readFile: (uri) => (first as FileAccessProvider).readFile(uri),
       readDirectory: (uri) => (first as FileAccessProvider).readDirectory(uri),
     }
-    if (ps.some((p) => p.onFileChanged)) {
-      merged.onFileChanged = (cb) => {
-        for (const p of ps) p.onFileChanged?.(cb)
-      }
-    }
+
     return merged
   }
 
@@ -165,11 +160,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
         return results.flat()
       }
     }
-    if (ps.some((p) => p.onDiagnosticsChanged)) {
-      merged.onDiagnosticsChanged = (cb) => {
-        for (const p of ps) p.onDiagnosticsChanged?.(cb)
-      }
-    }
+
     return merged
   }
 

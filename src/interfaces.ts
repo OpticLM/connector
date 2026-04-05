@@ -26,15 +26,6 @@ export interface FileAccessProvider {
    * @returns Array of file/folder paths in the directory
    */
   readDirectory(relativePath: UnifiedUri): Promise<string[]>
-
-  /**
-   * Called by the driver to register a callback for file changes.
-   * When provided, the files:// resources become subscribable.
-   * The plugin should call the registered callback whenever a file changes.
-   *
-   * @param callback - The callback to invoke when a file changes
-   */
-  onFileChanged?(callback: (uri: UnifiedUri) => void): void
 }
 
 /**

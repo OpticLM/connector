@@ -75,21 +75,6 @@ export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
           }
 
           const availableMethods = [...registry.keys()]
-
-          // Register push notifications for this connection
-          if (providers.diagnostics?.onDiagnosticsChanged) {
-            providers.diagnostics.onDiagnosticsChanged((uri) => {
-              transport.sendNotification('onDiagnosticsChanged', [uri])
-            })
-            availableMethods.push('onDiagnosticsChanged')
-          }
-          if (providers.fileAccess.onFileChanged) {
-            providers.fileAccess.onFileChanged((uri) => {
-              transport.sendNotification('onFileChanged', [uri])
-            })
-            availableMethods.push('onFileChanged')
-          }
-
           return { methods: availableMethods }
         }
 

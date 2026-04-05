@@ -522,26 +522,6 @@ describe('LspClient', () => {
       const result = await client.diagnostics?.getWorkspaceDiagnostics?.()
       expect(result).toHaveLength(2)
     })
-
-    it('invokes onDiagnosticsChanged listeners', async () => {
-      mockServer = await setupMockServer()
-      const { conn, client } = mockServer
-      const fileUri = `file:///${WORKSPACE.replace(/\\/g, '/')}/src/main.ts`
-
-      const changedUris: string[] = []
-      client.diagnostics?.onDiagnosticsChanged?.((uri) => changedUris.push(uri))
-
-      conn.onNotification('textDocument/didOpen', () => {})
-
-      await conn.sendNotification('textDocument/publishDiagnostics', {
-        uri: fileUri,
-        diagnostics: [],
-      })
-
-      await new Promise((resolve) => setTimeout(resolve, 50))
-
-      expect(changedUris).toContain('src/main.ts')
-    })
   })
 
   describe('document sync', () => {

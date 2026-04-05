@@ -29,7 +29,7 @@ pnpm add @opticlm/connector
 
 Providers are installed onto an MCP server using `install()` from `@opticlm/connector/mcp`. Each call registers the tools and resources for that specific provider. Providers that depend on file access (definition, references, hierarchy, edit) receive a `fileAccess` option.
 
-You can pass a single provider or an array of providers of the same type. When an array is given, their results are merged automatically — array-returning methods (e.g. `provideDefinition`) are concatenated, void methods are called on all providers in parallel, and callback registrars (e.g. `onDiagnosticsChanged`) are registered on every provider in the array.
+You can pass a single provider or an array of providers of the same type. When an array is given, their results are merged automatically — array-returning methods (e.g. `provideDefinition`) are concatenated, void methods are called on all providers in parallel.
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -72,9 +72,6 @@ const diagnostics = {
   },
   getWorkspaceDiagnostics: async () => {
     return await lspClient.getWorkspaceDiagnostics()
-  },
-  onDiagnosticsChanged: (callback) => {
-    yourIDE.onDiagnosticsChanged((uri) => callback(uri))
   },
 }
 
@@ -195,8 +192,6 @@ Get diagnostics (errors, warnings) for a specific file.
 
 Returns diagnostics formatted as markdown with location, severity, and message information.
 
-**Subscription Support:** If your `DiagnosticsProvider` implements `onDiagnosticsChanged`, these resources become subscribable. When diagnostics change, the driver sends resource update notifications.
-
 ### `diagnostics://workspace`
 
 Get diagnostics across the entire workspace.
@@ -206,8 +201,6 @@ Get diagnostics across the entire workspace.
 Only available if your `DiagnosticsProvider` implements the optional `getWorkspaceDiagnostics()` method.
 
 Returns workspace diagnostics grouped by file, formatted as markdown.
-
-**Subscription Support:** If your `DiagnosticsProvider` implements `onDiagnosticsChanged`, this resource becomes subscribable.
 
 ### `outline://{path}`
 
@@ -290,32 +283,6 @@ All resource templates with a `{+path}` variable (`files://`, `diagnostics://`, 
 
 This works automatically — no additional configuration is needed.
 
-## Subscription and Change Notifications
-
-Providers can implement optional `onDiagnosticsChanged` and `onFileChanged` callbacks to make resources subscribable:
-
-```typescript
-import { install } from '@opticlm/connector/mcp'
-
-install(server, {
-  readFile: async (uri) => { /* ... */ },
-  readDirectory: async (path) => { /* ... */ },
-  onFileChanged: (callback) => {
-    yourIDE.onFileChanged((uri) => callback(uri))
-  },
-})
-
-install(server, {
-  provideDiagnostics: async (uri) => { /* ... */ },
-  getWorkspaceDiagnostics: async () => { /* ... */ },
-  onDiagnosticsChanged: (callback) => {
-    yourIDE.onDiagnosticsChanged((uri) => callback(uri))
-  },
-})
-```
-
-When diagnostics or files change, call the registered callback with the affected file URI. The driver will send MCP resource update notifications to subscribers.
-
 ## Symbol Resolution
 
 The SDK uses a robust algorithm to handle imprecise LLM positioning:
@@ -395,27 +362,6 @@ conn.disconnect()
 
 The handshake automatically discovers which providers the server exposes and builds typed proxies. Multiple clients can connect to the same pipe simultaneously, each with their own provider instances.
 
-**Broadcasting to multiple clients** — since each connection gets its own providers, use a shared subscriber set for push notifications that should reach all clients:
-
-```typescript
-const diagnosticsSubscribers = new Set<(uri: string) => void>()
-yourIDE.onDiagnosticsChanged((uri) => {
-  for (const cb of diagnosticsSubscribers) cb(uri)
-})
-
-await servePipe({
-  pipeName: 'my-ide-lsp',
-  createProviders(context) {
-    return {
-      fileAccess: { /* ... */ },
-      diagnostics: {
-        provideDiagnostics: (uri) => yourIDE.getDiagnostics(uri),
-        onDiagnosticsChanged: (cb) => diagnosticsSubscribers.add(cb),
-      },
-    }
-  },
-})
-```
 
 ## LSP Client (Built-in)
 

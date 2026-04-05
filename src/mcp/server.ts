@@ -583,23 +583,6 @@ export function registerDiagnosticsResources(
       },
     )
   }
-
-  // Set up subscription support if onDiagnosticsChanged is provided
-  if (provider.onDiagnosticsChanged) {
-    provider.onDiagnosticsChanged((uri) => {
-      // Notify MCP clients that the diagnostics resource has been updated
-      const normalizedUri = normalizeUri(uri)
-      server.server.sendResourceUpdated({
-        uri: `diagnostics://${normalizedUri}`,
-      })
-      // Also notify workspace diagnostics if it exists
-      if (provider.getWorkspaceDiagnostics) {
-        server.server.sendResourceUpdated({
-          uri: 'diagnostics://workspace',
-        })
-      }
-    })
-  }
 }
 
 /**
@@ -895,16 +878,6 @@ export function registerFilesystemResource(
       }
     },
   )
-
-  // Set up subscription support if onFileChanged is provided
-  if (provider.onFileChanged) {
-    provider.onFileChanged((uri) => {
-      const normalizedUri = normalizeUri(uri)
-      server.server.sendResourceUpdated({
-        uri: `files://${normalizedUri}`,
-      })
-    })
-  }
 }
 
 /**

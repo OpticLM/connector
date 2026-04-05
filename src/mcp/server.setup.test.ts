@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import type { OnDiagnosticsChangedCallback } from '../capabilities.js'
 import type { Diagnostic, DocumentSymbol } from '../types.js'
 import { install } from './index.js'
 import {
@@ -187,24 +186,6 @@ describe('McpLspDriver', () => {
   })
 })
 
-describe('diagnostics subscription', () => {
-  it('should register onDiagnosticsChanged callback when provided', () => {
-    const server = createMockServer()
-    let registeredCallback: OnDiagnosticsChangedCallback | undefined
-
-    const diagnosticsProvider = createMockDiagnosticsProvider()
-    diagnosticsProvider.onDiagnosticsChanged = (callback) => {
-      registeredCallback = callback
-    }
-
-    const fileAccess = createMockFileAccess()
-    install(server, fileAccess)
-    install(server, diagnosticsProvider, { fileAccess })
-
-    expect(registeredCallback).toBeDefined()
-  })
-})
-
 describe('provider arrays', () => {
   it('should accept a single-element array', () => {
     const server = createMockServer()
@@ -278,28 +259,6 @@ describe('provider arrays', () => {
     expect([...r1, ...r2]).toHaveLength(2)
     expect(r1[0]?.message).toBe('Error A')
     expect(r2[0]?.message).toBe('Warning B')
-  })
-
-  it('should register onDiagnosticsChanged on all providers in array', () => {
-    const server = createMockServer()
-    const fileAccess = createMockFileAccess()
-
-    let cb1Called = false
-    let cb2Called = false
-
-    const p1 = createMockDiagnosticsProvider()
-    p1.onDiagnosticsChanged = () => {
-      cb1Called = true
-    }
-    const p2 = createMockDiagnosticsProvider()
-    p2.onDiagnosticsChanged = () => {
-      cb2Called = true
-    }
-
-    install(server, [p1, p2], { fileAccess })
-
-    expect(cb1Called).toBe(true)
-    expect(cb2Called).toBe(true)
   })
 
   it('should throw for empty provider array', () => {

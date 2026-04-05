@@ -68,10 +68,7 @@ describe('Pipe IPC - Handshake', () => {
       definition: createMockDefinitionProvider(),
       references: createMockReferencesProvider(),
       hierarchy: createMockHierarchyProvider(),
-      diagnostics: {
-        ...createMockDiagnosticsProvider(),
-        onDiagnosticsChanged: (_cb: (uri: string) => void) => {},
-      },
+      diagnostics: createMockDiagnosticsProvider(),
       outline: createMockOutlineProvider(),
       globalFind: createMockGlobalFindProvider(),
       graph: createMockGraphProvider(),
@@ -94,7 +91,6 @@ describe('Pipe IPC - Handshake', () => {
     )
     expect(conn.availableMethods).toContain('frontmatter.getFrontmatter')
     expect(conn.availableMethods).toContain('frontmatter.setFrontmatter')
-    expect(conn.availableMethods).toContain('onDiagnosticsChanged')
   })
 })
 
@@ -378,34 +374,6 @@ describe('Pipe IPC - End-to-end with MCP', () => {
   })
 })
 
-describe('Pipe IPC - Push notifications', () => {
-  it('onDiagnosticsChanged fires on client', async () => {
-    let serverBroadcast: ((uri: string) => void) | undefined
-    const { conn } = await setupPipe({
-      fileAccess: createMockFileAccess(),
-      diagnostics: {
-        provideDiagnostics: vi.fn(async () => []),
-        onDiagnosticsChanged: (cb) => {
-          serverBroadcast = cb
-        },
-      },
-    })
-
-    const received: string[] = []
-    conn.diagnostics?.onDiagnosticsChanged?.((uri) => {
-      received.push(uri)
-    })
-
-    // Trigger notification from server side
-    serverBroadcast?.('path/to/changed-file')
-
-    // Allow async propagation
-    await new Promise((r) => setTimeout(r, 50))
-
-    expect(received).toStrictEqual(['path/to/changed-file'])
-  })
-})
-
 describe('Pipe IPC - Multiple clients', () => {
   it('two clients connected simultaneously', async () => {
     const files = { 'test.txt': 'content-a' }
@@ -441,44 +409,6 @@ describe('Pipe IPC - Multiple clients', () => {
 
     const r3 = await conn2.fileAccess?.readFile('test.txt')
     expect(r3).toBe('content-a')
-  })
-
-  it('both clients receive notifications via shared subscriber set', async () => {
-    // Simulate a shared event bus — this is the idiomatic pattern for
-    // broadcasting when each connection gets its own provider instance.
-    const subscribers = new Set<(uri: string) => void>()
-
-    const pipeName = uniquePipeName()
-    const server = await servePipe({
-      pipeName,
-      createProviders: () => ({
-        fileAccess: createMockFileAccess(),
-        diagnostics: {
-          provideDiagnostics: vi.fn(async () => []),
-          onDiagnosticsChanged: (cb) => {
-            subscribers.add(cb)
-          },
-        },
-      }),
-    })
-    servers.push(server)
-
-    const conn1 = await connectPipe({ pipeName })
-    connections.push(conn1)
-    const conn2 = await connectPipe({ pipeName })
-    connections.push(conn2)
-
-    const received1: string[] = []
-    const received2: string[] = []
-    conn1.diagnostics?.onDiagnosticsChanged?.((uri) => received1.push(uri))
-    conn2.diagnostics?.onDiagnosticsChanged?.((uri) => received2.push(uri))
-
-    // Broadcast to all connections via the shared subscriber set
-    for (const cb of subscribers) cb('file.ts')
-    await new Promise((r) => setTimeout(r, 50))
-
-    expect(received1).toStrictEqual(['file.ts'])
-    expect(received2).toStrictEqual(['file.ts'])
   })
 })
 

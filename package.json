@@ -47,19 +47,26 @@
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "vscode-languageserver-protocol": "^3.17.5",
+    "ai": "^6.0.146",
     "zod": "^4.3.6"
   },
   "peerDependenciesMeta": {
     "vscode-languageserver-protocol": {
+      "optional": true
+    },
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    },
+    "ai": {
       "optional": true
     }
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.6",
     "@types/node": "^25",
+    "nanoid": "^5.1.7",
     "tsup": "^8.5.1",
     "typescript": "^5.9",
-    "nanoid": "^5.1.7",
     "vitest": "^4"
   },
   "engines": {

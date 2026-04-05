@@ -63,19 +63,7 @@ export function connectPipe(
       clearTimeout(timer)
       if (settled) return
 
-      let diagnosticsCallback: ((uri: string) => void) | undefined
-      let fileChangedCallback: ((uri: string) => void) | undefined
-
-      const transport = new PipeTransport(socket, {
-        onNotification: (method, params) => {
-          if (method === 'onDiagnosticsChanged' && diagnosticsCallback) {
-            diagnosticsCallback(params[0] as string)
-          }
-          if (method === 'onFileChanged' && fileChangedCallback) {
-            fileChangedCallback(params[0] as string)
-          }
-        },
-      })
+      const transport = new PipeTransport(socket)
 
       // Perform handshake — send client context so server can create providers
       transport
@@ -104,30 +92,6 @@ export function connectPipe(
             for (const method of present) {
               provider[method] = (...args: unknown[]) =>
                 transport.sendRequest(`${providerKey}.${method}`, args)
-            }
-
-            // Attach onDiagnosticsChanged to diagnostics provider
-            if (
-              providerKey === 'diagnostics' &&
-              availableMethods.includes('onDiagnosticsChanged')
-            ) {
-              ;(provider as Record<string, unknown>).onDiagnosticsChanged = (
-                callback: (uri: string) => void,
-              ) => {
-                diagnosticsCallback = callback
-              }
-            }
-
-            // Attach onFileChanged to fileAccess provider
-            if (
-              providerKey === 'fileAccess' &&
-              availableMethods.includes('onFileChanged')
-            ) {
-              ;(provider as Record<string, unknown>).onFileChanged = (
-                callback: (uri: string) => void,
-              ) => {
-                fileChangedCallback = callback
-              }
             }
 
             built[providerKey] = provider

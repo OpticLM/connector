@@ -17,7 +17,6 @@ export type {
   GlobalFindProvider,
   GraphProvider,
   HierarchyProvider,
-  OnDiagnosticsChangedCallback,
   OutlineProvider,
   ReferencesProvider,
 } from './capabilities.js'

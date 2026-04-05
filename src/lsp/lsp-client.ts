@@ -32,7 +32,6 @@ import type {
   OutlineProvider,
   ReferencesProvider,
 } from '../capabilities.js'
-import type { FileAccessProvider } from '../interfaces.js'
 import type {
   CodeSnippet,
   Diagnostic,
@@ -74,15 +73,12 @@ export class LspClient {
   private connection: ProtocolConnection | null = null
   private openDocuments = new Map<string, OpenDocument>()
   private diagnosticsCache = new Map<string, Diagnostic[]>()
-  private diagnosticsListeners: ((uri: UnifiedUri) => void)[] = []
-  private fileChangedListeners: ((uri: UnifiedUri) => void)[] = []
 
   readonly definition: DefinitionProvider | undefined
   readonly references: ReferencesProvider | undefined
   readonly hierarchy: HierarchyProvider | undefined
   readonly outline: OutlineProvider | undefined
   readonly diagnostics: DiagnosticsProvider | undefined
-  readonly fileAccess: Pick<FileAccessProvider, 'onFileChanged'>
 
   private readonly options: Required<
     Pick<LspClientOptions, 'documentIdleTimeout' | 'requestTimeout'>
@@ -103,11 +99,6 @@ export class LspClient {
     this.hierarchy = undefined
     this.outline = undefined
     this.diagnostics = undefined
-    this.fileAccess = {
-      onFileChanged: (callback) => {
-        this.fileChangedListeners.push(callback)
-      },
-    }
   }
 
   getState(): LspClientState {
@@ -136,20 +127,6 @@ export class LspClient {
       const caps = initResult.capabilities
 
       this.setupProviders(caps)
-
-      connection.onNotification(
-        'textDocument/publishDiagnostics',
-        (params: PublishDiagnosticsParams) => {
-          const sdkPath = lspUriToPath(this.options.workspacePath, params.uri)
-          const diagnostics = params.diagnostics.map((d) =>
-            convertLspDiagnostic(this.options.workspacePath, params.uri, d),
-          )
-          this.diagnosticsCache.set(sdkPath, diagnostics)
-          for (const listener of this.diagnosticsListeners) {
-            listener(sdkPath)
-          }
-        },
-      )
 
       await connection.sendNotification(InitializedNotification.type, {})
       this.state = 'running'
@@ -188,10 +165,6 @@ export class LspClient {
     // Close and reopen with fresh content
     await this.closeDocument(lspUri)
     await this.ensureDocumentOpen(lspUri)
-
-    for (const listener of this.fileChangedListeners) {
-      listener(sdkPath)
-    }
   }
 
   // --- Internal methods ---
@@ -232,9 +205,6 @@ export class LspClient {
           convertLspDiagnostic(this.options.workspacePath, params.uri, d),
         )
         this.diagnosticsCache.set(sdkPath, diagnostics)
-        for (const listener of this.diagnosticsListeners) {
-          listener(sdkPath)
-        }
       },
     )
 
@@ -326,13 +296,10 @@ export class LspClient {
         provideDocumentSymbols: (uri) => this.provideDocumentSymbols(uri),
       }
     }
-    // Diagnostics are always supported (via publishDiagnostics notification)
+
     ;(this as { diagnostics: DiagnosticsProvider | undefined }).diagnostics = {
       provideDiagnostics: (uri) => this.provideDiagnostics(uri),
       getWorkspaceDiagnostics: () => this.getWorkspaceDiagnostics(),
-      onDiagnosticsChanged: (callback) => {
-        this.diagnosticsListeners.push(callback)
-      },
     }
   }
 
