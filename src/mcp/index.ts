@@ -55,7 +55,7 @@ import {
 // Provider merging
 // ============================================================================
 
-function mergeProviders(providers: AnyProvider[]): AnyProvider {
+export function mergeProviders<T extends AnyProvider>(providers: T[]): T {
   if (providers.length <= 0)
     throw new Error('providers array must not be empty')
   if (providers.length === 1 && providers[0]) return providers[0]
@@ -71,7 +71,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
       readDirectory: (uri) => (first as FileAccessProvider).readDirectory(uri),
     }
 
-    return merged
+    return merged as T
   }
 
   if ('applyEdits' in first) {
@@ -99,7 +99,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
         return results.flat()
       }
     }
-    return merged
+    return merged as T
   }
 
   // ReferencesProvider: provideReferences
@@ -123,7 +123,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
         return results.flat()
       }
     }
-    return merged
+    return merged as T
   }
 
   // HierarchyProvider: provideCallHierarchy
@@ -136,7 +136,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
         )
         return results.flat()
       },
-    } satisfies HierarchyProvider
+    } satisfies HierarchyProvider as T
   }
 
   // DiagnosticsProvider: provideDiagnostics
@@ -161,7 +161,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
       }
     }
 
-    return merged
+    return merged as T
   }
 
   // OutlineProvider: provideDocumentSymbols
@@ -174,7 +174,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
         )
         return results.flat()
       },
-    } satisfies OutlineProvider
+    } satisfies OutlineProvider as T
   }
 
   // GlobalFindProvider: globalFind
@@ -187,7 +187,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
         )
         return results.flat()
       },
-    } satisfies GlobalFindProvider
+    } satisfies GlobalFindProvider as T
   }
 
   // GraphProvider: getLinkStructure
@@ -213,7 +213,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
       async addLink(path, pattern, linkTo) {
         await Promise.all(ps.map((p) => p.addLink(path, pattern, linkTo)))
       },
-    } satisfies GraphProvider
+    } satisfies GraphProvider as T
   }
 
   // FrontmatterProvider: getFrontmatterStructure
@@ -235,7 +235,7 @@ function mergeProviders(providers: AnyProvider[]): AnyProvider {
           ps.map((p) => p.setFrontmatter(path, property, value)),
         )
       },
-    } satisfies FrontmatterProvider
+    } satisfies FrontmatterProvider as T
   }
 
   return first

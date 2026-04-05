@@ -104,7 +104,7 @@ Each `install()` call is independent — only install the providers your IDE act
 
 ## AI SDK Quick Start
 
-The `@opticlm/connector/ai-sdk` entry point exports typed tool factories for the [Vercel AI SDK](https://sdk.vercel.ai/). Each factory takes the required providers and returns a tool that can be passed directly to `generateText`, `streamText`, or `useChat`.
+The `@opticlm/connector/ai-sdk` entry point exports typed tool factories for the [Vercel AI SDK](https://ai-sdk.dev/). Each factory takes the required providers and returns a tool that can be passed directly to `generateText`, `streamText`, or `useChat`.
 
 Resources from the MCP implementation are replaced by explicit tool calls that accept the same parameters as query arguments.
 
