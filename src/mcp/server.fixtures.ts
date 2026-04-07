@@ -32,6 +32,8 @@ export const mockFiles = {
 
 export function createMockFileAccess(
   files: Record<string, string> = mockFiles,
+  isFile: boolean = true,
+  isDirectory: boolean = false,
 ): FileAccessProvider {
   return {
     readFile: vi.fn(async (uri: string) => {
@@ -43,6 +45,10 @@ export function createMockFileAccess(
     }),
 
     readDirectory: vi.fn(async () => ['file1.ts', 'file2.ts', 'subdir']),
+
+    isFile: vi.fn(async () => isFile),
+
+    isDirectory: vi.fn(async () => isDirectory),
   }
 }
 

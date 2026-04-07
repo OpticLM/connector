@@ -733,7 +733,7 @@ export function registerFilesystemResource(
   server: McpServer,
   provider: FileAccessProvider,
 ): void {
-  const { readFile, readDirectory } = provider
+  const { readFile, readDirectory, isFile, isDirectory } = provider
 
   const filesystemTemplate = new ResourceTemplate('files://{+path}', {
     list: undefined, // Cannot enumerate all directories
@@ -788,8 +788,7 @@ export function registerFilesystemResource(
         const lineRange = parseLineRange(fragment)
         const pattern = params.get('pattern')
 
-        // Try reading as a file first
-        try {
+        if (await isFile(normalizedPath)) {
           const content = await readFile(normalizedPath)
 
           // Build numbered-line pipeline
@@ -819,8 +818,7 @@ export function registerFilesystemResource(
               },
             ],
           }
-        } catch {
-          // File reading failed, try as directory
+        } else if (await isDirectory(normalizedPath)) {
           const files = await readDirectory(normalizedPath)
 
           return {
@@ -832,6 +830,10 @@ export function registerFilesystemResource(
               },
             ],
           }
+        } else {
+          throw new Error(
+            'The URI does not point to a file or a directory, so it cannot be accessed.',
+          )
         }
       } catch (error) {
         const message = `Error: ${error instanceof Error ? error.message : String(error)}`

@@ -26,6 +26,18 @@ export interface FileAccessProvider {
    * @returns Array of file/folder paths in the directory
    */
   readDirectory(relativePath: UnifiedUri): Promise<string[]>
+
+  /**
+   * Check whether the URI points to a file.
+   * @param uri - The URI to check
+   */
+  isFile(uri: UnifiedUri): Promise<boolean>
+
+  /**
+   * Check whether the URI points to a directory.
+   * @param uri - The URI to check
+   */
+  isDirectory(uri: UnifiedUri): Promise<boolean>
 }
 
 /**

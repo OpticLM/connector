@@ -583,7 +583,7 @@ describe('requestFile', () => {
   })
 
   it('falls back to directory listing when path is a directory', async () => {
-    const fileAccess = createMockFileAccess({})
+    const fileAccess = createMockFileAccess({}, false, true)
     const t = requestFile(fileAccess)
 
     const result = await exec(t, { path: 'src' })
@@ -591,6 +591,18 @@ describe('requestFile', () => {
     expect(result).toStrictEqual({
       type: 'directory',
       entries: ['file1.ts', 'file2.ts', 'subdir'],
+    })
+  })
+
+  it('throws when URI does not point to a file or directory', async () => {
+    const fileAccess = createMockFileAccess({}, false, false)
+    const t = requestFile(fileAccess)
+
+    const result = await exec(t, { path: 'src' })
+
+    expect(result).toStrictEqual({
+      error:
+        'The URI does not point to a file or a directory, so it cannot be accessed.',
     })
   })
 })

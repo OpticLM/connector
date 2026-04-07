@@ -197,7 +197,7 @@ describe('resource integration', () => {
 
   it('should register and access filesystem resource for directory listing', async () => {
     const server = createMockServer()
-    const fileAccess = createMockFileAccess({}) // No files, so it falls back to readDirectory
+    const fileAccess = createMockFileAccess({}, false, true)
 
     install(server, fileAccess)
 
@@ -214,7 +214,11 @@ describe('resource integration', () => {
   it('should read file content via filesystem resource', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2\nline3\nline4\nline5'
-    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
+    const fileAccess = createMockFileAccess(
+      { 'src/test.ts': fileContent },
+      true,
+      false,
+    )
 
     install(server, fileAccess)
 
@@ -233,7 +237,11 @@ describe('resource integration', () => {
   it('should read specific line from file via filesystem resource', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2\nline3\nline4\nline5'
-    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
+    const fileAccess = createMockFileAccess(
+      { 'src/test.ts': fileContent },
+      true,
+      false,
+    )
 
     install(server, fileAccess)
 
@@ -252,7 +260,11 @@ describe('resource integration', () => {
   it('should read line range from file via filesystem resource', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2\nline3\nline4\nline5'
-    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
+    const fileAccess = createMockFileAccess(
+      { 'src/test.ts': fileContent },
+      true,
+      false,
+    )
 
     install(server, fileAccess)
 
@@ -272,7 +284,11 @@ describe('resource integration', () => {
     const server = createMockServer()
     const fileContent =
       'import { foo } from "bar"\nconst x = 1\nimport { baz } from "qux"\nexport default x'
-    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
+    const fileAccess = createMockFileAccess(
+      { 'src/test.ts': fileContent },
+      true,
+      false,
+    )
 
     install(server, fileAccess)
 
@@ -291,7 +307,11 @@ describe('resource integration', () => {
   it('should combine line range with regex pattern', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2 match\nline3\nline4 match\nline5'
-    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
+    const fileAccess = createMockFileAccess(
+      { 'src/test.ts': fileContent },
+      true,
+      false,
+    )
 
     install(server, fileAccess)
 
@@ -310,7 +330,11 @@ describe('resource integration', () => {
   it('should support fragment-before-query ordering (#L2-L4?pattern=match)', async () => {
     const server = createMockServer()
     const fileContent = 'line1\nline2 match\nline3\nline4 match\nline5'
-    const fileAccess = createMockFileAccess({ 'src/test.ts': fileContent })
+    const fileAccess = createMockFileAccess(
+      { 'src/test.ts': fileContent },
+      true,
+      false,
+    )
 
     install(server, fileAccess)
 
@@ -328,7 +352,7 @@ describe('resource integration', () => {
 
   it('should fallback to readDirectory when file read fails on files://', async () => {
     const server = createMockServer()
-    const fileAccess = createMockFileAccess({}) // No files, readFile will fail
+    const fileAccess = createMockFileAccess({}, false, true)
 
     install(server, fileAccess)
 

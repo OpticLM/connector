@@ -69,6 +69,8 @@ export function mergeProviders<T extends AnyProvider>(providers: T[]): T {
     const merged: FileAccessProvider = {
       readFile: (uri) => (first as FileAccessProvider).readFile(uri),
       readDirectory: (uri) => (first as FileAccessProvider).readDirectory(uri),
+      isFile: (uri) => (first as FileAccessProvider).isFile(uri),
+      isDirectory: (uri) => (first as FileAccessProvider).isDirectory(uri),
     }
 
     return merged as T

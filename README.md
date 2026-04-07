@@ -51,6 +51,8 @@ const fileAccess = {
     return await fs.readFile(uri, 'utf-8')
   },
   readDirectory: (uri: string) => yourIDE.workspace.readDirectory(uri),
+  isFile: ...,
+  isDirectory: ...,
 }
 
 // 3. Implement Edit Provider
@@ -135,6 +137,8 @@ import * as fs from 'fs/promises'
 const fileAccess = {
   readFile: async (uri: string) => fs.readFile(uri, 'utf-8'),
   readDirectory: async (path: string) => yourIDE.readDirectory(path),
+  isFile: ...,
+  isDirectory: ...,
 }
 const edit = {
   applyEdits: async (operation) => yourIDE.applyEdits(operation),
@@ -536,6 +540,8 @@ const server = new McpServer({ name: 'my-mcp', version: '1.0.0' })
 const fileAccess = {
   readFile: (uri: string) => fs.readFile(uri, 'utf-8'),
   readDirectory: async () => [],
+  isFile: ...,
+  isDirectory: ...,
 }
 
 // Providers are automatically created based on server capabilities

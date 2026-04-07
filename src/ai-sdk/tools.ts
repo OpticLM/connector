@@ -271,27 +271,31 @@ export const requestFile = (fileAccess: FileAccessProvider) =>
       const normalizedPath = normalizeUri(path)
 
       try {
-        const content = await fileAccess.readFile(normalizedPath)
-        let lines = toNumberedLines(content)
+        if (await fileAccess.isFile(normalizedPath)) {
+          const content = await fileAccess.readFile(normalizedPath)
+          let lines = toNumberedLines(content)
 
-        if (start_line !== undefined) {
-          const end = end_line ?? start_line
-          lines = lines.filter((l) => l.num >= start_line && l.num <= end)
-        }
+          if (start_line !== undefined) {
+            const end = end_line ?? start_line
+            lines = lines.filter((l) => l.num >= start_line && l.num <= end)
+          }
 
-        if (pattern) {
-          const regex = new RegExp(pattern)
-          lines = lines.filter((l) => regex.test(l.text))
-        }
+          if (pattern) {
+            const regex = new RegExp(pattern)
+            lines = lines.filter((l) => regex.test(l.text))
+          }
 
-        return { type: 'file' as const, content: formatAsHashlines(lines) }
-      } catch {
-        try {
+          return { type: 'file' as const, content: formatAsHashlines(lines) }
+        } else if (await fileAccess.isDirectory(normalizedPath)) {
           const entries = await fileAccess.readDirectory(normalizedPath)
           return { type: 'directory' as const, entries }
-        } catch (error) {
-          return errorResult(error)
+        } else {
+          throw new Error(
+            'The URI does not point to a file or a directory, so it cannot be accessed.',
+          )
         }
+      } catch (e) {
+        return errorResult(e)
       }
     },
   })
