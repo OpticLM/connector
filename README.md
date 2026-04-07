@@ -462,8 +462,9 @@ When the MCP server runs in a separate process from the IDE plugin (e.g., spawne
 ```typescript
 import { servePipe } from '@opticlm/connector/pipe'
 
-const server = await servePipe({
+await using server = await servePipe({
   pipeName: 'my-ide-lsp',
+  signal: myAbortController.signal,
   createProviders(context) {
     // context is whatever the client sent at connect time
     const { workspacePath } = context as { workspacePath: string }
@@ -476,22 +477,20 @@ const server = await servePipe({
 })
 // server.pipePath        — the resolved pipe path
 // server.connectionCount — number of connected clients
-// await server.close()   — shut down
 ```
 
-The factory is called once per incoming connection, so providers can be tailored to each client. It may return a plain object or a `Promise` for async initialization.
-
-**MCP server side** — connect with context and install proxy providers:
+**User side** — connect with context and install proxy providers:
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { connectPipe } from '@opticlm/connector/pipe'
 import { install } from '@opticlm/connector/mcp'
 
-const conn = await connectPipe({
+using conn = await connectPipe({
   pipeName: 'my-ide-lsp',
   connectTimeout: 5000,  // optional, default 5000ms
   context: { workspacePath: '/path/to/project' },  // sent to createProviders
+  signal: myAbortController.signal,
 })
 
 // conn exposes proxy providers as named fields:
@@ -505,9 +504,6 @@ if (conn.definition && conn.fileAccess)
   install(mcpServer, conn.definition, { fileAccess: conn.fileAccess })
 // ...
 // Install whichever proxy providers are available
-
-// When done:
-conn.disconnect()
 ```
 
 The handshake automatically discovers which providers the server exposes and builds typed proxies. Multiple clients can connect to the same pipe simultaneously, each with their own provider instances.

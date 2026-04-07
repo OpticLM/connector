@@ -1,3 +1,4 @@
+import { once } from 'node:events'
 import { unlinkSync } from 'node:fs'
 import { createServer } from 'node:net'
 import type {
@@ -28,6 +29,7 @@ export interface ProviderSet {
 
 export interface ServePipeOptions {
   pipeName: string
+  signal?: AbortSignal
   createProviders: (context: unknown) => ProviderSet | Promise<ProviderSet>
 }
 
@@ -39,8 +41,10 @@ export interface PipeServer extends AsyncDisposable {
 
 type MethodHandler = (...args: unknown[]) => Promise<unknown>
 
-export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
-  const { pipeName } = options
+export async function servePipe(
+  options: ServePipeOptions,
+): Promise<PipeServer> {
+  const { pipeName, signal } = options
   const pipePath = toPipePath(pipeName)
 
   const connections = new Set<PipeTransport>()
@@ -54,7 +58,6 @@ export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
           const context = params[0]
           const providers = await options.createProviders(context)
 
-          // Build method dispatch registry from providers
           registry = new Map<string, MethodHandler>()
           for (const { providerKey, methods } of PROVIDER_METHODS) {
             const provider = providers[providerKey as keyof ProviderSet] as
@@ -74,8 +77,7 @@ export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
             }
           }
 
-          const availableMethods = [...registry.keys()]
-          return { methods: availableMethods }
+          return { methods: [...registry.keys()] }
         }
 
         if (!registry) {
@@ -92,52 +94,58 @@ export function servePipe(options: ServePipeOptions): Promise<PipeServer> {
     socket.on('close', () => connections.delete(transport))
   })
 
-  return new Promise((resolve, reject) => {
-    // On Unix, unlink stale socket before listening
-    if (process.platform !== 'win32') {
-      try {
-        unlinkSync(pipePath)
-      } catch {
-        // ignore if file doesn't exist
-      }
+  if (process.platform !== 'win32') {
+    try {
+      unlinkSync(pipePath)
+    } catch {}
+  }
+
+  server.listen(pipePath)
+
+  const onAbort = () => server.close()
+  if (signal) {
+    signal.addEventListener('abort', onAbort, { once: true })
+  }
+
+  try {
+    await once(server, 'listening', { signal })
+  } catch (err) {
+    server.close()
+    throw err
+  } finally {
+    if (signal) {
+      signal.removeEventListener('abort', onAbort)
     }
+  }
 
-    server.on('error', reject)
-    server.listen(pipePath, () => {
-      server.removeListener('error', reject)
-
-      const pipeServer: PipeServer = {
-        get pipePath() {
-          return pipePath
-        },
-        get connectionCount() {
-          return connections.size
-        },
-        async close() {
-          for (const transport of connections) {
-            transport.destroy()
-          }
-          connections.clear()
-          await new Promise<void>((res, rej) => {
-            server.close((err) => {
-              if (err) rej(err)
-              else res()
-            })
-          })
-          if (process.platform !== 'win32') {
-            try {
-              unlinkSync(pipePath)
-            } catch {
-              // ignore
-            }
-          }
-        },
-        async [Symbol.asyncDispose]() {
-          await this.close()
-        },
+  const ps: PipeServer = {
+    get pipePath() {
+      return pipePath
+    },
+    get connectionCount() {
+      return connections.size
+    },
+    async close() {
+      for (const transport of connections) {
+        transport[Symbol.dispose]()
       }
+      connections.clear()
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      })
+      if (process.platform !== 'win32') {
+        try {
+          unlinkSync(pipePath)
+        } catch {}
+      }
+    },
+    async [Symbol.asyncDispose]() {
+      await this.close()
+    },
+  }
 
-      resolve(pipeServer)
-    })
-  })
+  return ps
 }

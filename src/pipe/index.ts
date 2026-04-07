@@ -5,7 +5,7 @@
  */
 
 export type {
-  connectPipeOptions,
+  ConnectPipeOptions,
   PipeConnection,
 } from './pipe-client.js'
 export { connectPipe } from './pipe-client.js'

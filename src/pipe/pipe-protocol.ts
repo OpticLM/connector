@@ -1,8 +1,5 @@
-import type { Socket } from 'node:net'
-
-// ============================================================================
-// Message Types
-// ============================================================================
+import { createInterface } from 'node:readline'
+import type { Duplex } from 'node:stream'
 
 interface PipeRequest {
   type: 'request'
@@ -26,13 +23,13 @@ interface PipeNotification {
 
 type PipeMessage = PipeRequest | PipeResponse | PipeNotification
 
-interface PipeTransportOptions {
+export interface PipeTransportOptions {
   onRequest?: (method: string, params: unknown[]) => Promise<unknown>
   onNotification?: (method: string, params: unknown[]) => void
 }
 
 export class PipeTransport implements Disposable {
-  private readonly socket: Socket
+  private readonly stream: Duplex
   private readonly requestHandler?: (
     method: string,
     params: unknown[],
@@ -46,62 +43,65 @@ export class PipeTransport implements Disposable {
     number,
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >()
-  private buffer = ''
-  private destroyed = false
+  private disposed = false
 
-  constructor(socket: Socket, options?: PipeTransportOptions) {
-    this.socket = socket
+  constructor(stream: Duplex, options?: PipeTransportOptions) {
+    this.stream = stream
     this.requestHandler = options?.onRequest
     this.notificationHandler = options?.onNotification
 
-    socket.on('data', (chunk: Buffer) => this.handleData(chunk))
-    socket.on('close', () => this.rejectAll(new Error('Connection closed')))
-    socket.on('error', (err: Error) => this.rejectAll(err))
-  }
+    stream.on('close', () => {
+      this.rejectAll(new Error('Connection closed'))
+      this[Symbol.dispose]()
+    })
 
-  sendRequest(method: string, params: unknown[]): Promise<unknown> {
-    if (this.destroyed) {
-      return Promise.reject(new Error('Transport destroyed'))
-    }
-    return new Promise((resolve, reject) => {
-      const id = this.nextId++
-      this.pending.set(id, { resolve, reject })
-      const msg: PipeRequest = { type: 'request', id, method, params }
-      this.socket.write(`${JSON.stringify(msg)}\n`)
+    stream.on('error', (err: Error) => {
+      this.rejectAll(err)
+      this[Symbol.dispose]()
+    })
+
+    this.listen().catch((err) => {
+      this.rejectAll(err instanceof Error ? err : new Error(String(err)))
+      this[Symbol.dispose]()
     })
   }
 
-  sendNotification(method: string, params: unknown[]): void {
-    if (this.destroyed) return
-    const msg: PipeNotification = { type: 'notification', method, params }
-    this.socket.write(`${JSON.stringify(msg)}\n`)
-  }
-
-  destroy(): void {
-    if (this.destroyed) return
-    this.destroyed = true
-    this.rejectAll(new Error('Transport destroyed'))
-    this.socket.destroy()
-  }
-
-  [Symbol.dispose]() {
-    this.destroy()
-  }
-
-  private handleData(chunk: Buffer): void {
-    this.buffer += chunk.toString()
-    const lines = this.buffer.split('\n')
-    this.buffer = lines.pop() ?? ''
-    for (const line of lines) {
+  private async listen(): Promise<void> {
+    const rl = createInterface({ input: this.stream, terminal: false })
+    for await (const line of rl) {
+      if (this.disposed) break
       const trimmed = line.replace(/\r$/, '')
       if (!trimmed) continue
       try {
         const msg = JSON.parse(trimmed) as PipeMessage
         this.dispatch(msg)
-      } catch {
-        // ignore malformed JSON lines
-      }
+      } catch {}
     }
+  }
+
+  sendRequest(method: string, params: unknown[]): Promise<unknown> {
+    if (this.disposed) {
+      return Promise.reject(new Error('Transport disposed'))
+    }
+    return new Promise((resolve, reject) => {
+      const id = this.nextId++
+      this.pending.set(id, { resolve, reject })
+      const msg: PipeRequest = { type: 'request', id, method, params }
+      this.stream.write(`${JSON.stringify(msg)}\n`)
+    })
+  }
+
+  sendNotification(method: string, params: unknown[]): void {
+    if (this.disposed) return
+    const msg: PipeNotification = { type: 'notification', method, params }
+    this.stream.write(`${JSON.stringify(msg)}\n`)
+  }
+
+  [Symbol.dispose](): void {
+    if (this.disposed) return
+    this.disposed = true
+    this.rejectAll(new Error('Transport disposed'))
+    this.stream.destroy()
   }
 
   private dispatch(msg: PipeMessage): void {
@@ -122,16 +122,16 @@ export class PipeTransport implements Disposable {
         if (this.requestHandler) {
           this.requestHandler(msg.method, msg.params)
             .then((result) => {
-              if (this.destroyed) return
+              if (this.disposed) return
               const resp: PipeResponse = {
                 type: 'response',
                 id: msg.id,
                 result,
               }
-              this.socket.write(`${JSON.stringify(resp)}\n`)
+              this.stream.write(`${JSON.stringify(resp)}\n`)
             })
             .catch((err: unknown) => {
-              if (this.destroyed) return
+              if (this.disposed) return
               const resp: PipeResponse = {
                 type: 'response',
                 id: msg.id,
@@ -139,7 +139,7 @@ export class PipeTransport implements Disposable {
                   message: err instanceof Error ? err.message : String(err),
                 },
               }
-              this.socket.write(`${JSON.stringify(resp)}\n`)
+              this.stream.write(`${JSON.stringify(resp)}\n`)
             })
         }
         break
@@ -152,7 +152,7 @@ export class PipeTransport implements Disposable {
   }
 
   private rejectAll(error: Error): void {
-    for (const [, entry] of this.pending) {
+    for (const entry of this.pending.values()) {
       entry.reject(error)
     }
     this.pending.clear()
