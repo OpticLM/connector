@@ -36,7 +36,6 @@ export interface ServePipeOptions {
 export interface PipeServer extends AsyncDisposable {
   readonly pipePath: string
   readonly connectionCount: number
-  close(): Promise<void>
 }
 
 type MethodHandler = (...args: unknown[]) => Promise<unknown>
@@ -44,6 +43,8 @@ type MethodHandler = (...args: unknown[]) => Promise<unknown>
 export async function servePipe(
   options: ServePipeOptions,
 ): Promise<PipeServer> {
+  const stack = new AsyncDisposableStack()
+
   const { pipeName, signal } = options
   const pipePath = toPipePath(pipeName)
 
@@ -52,44 +53,47 @@ export async function servePipe(
   const server = createServer((socket) => {
     let registry: Map<string, MethodHandler> | null = null
 
-    const transport = new PipeTransport(socket, {
-      onRequest: async (method, params) => {
-        if (method === '_handshake') {
-          const context = params[0]
-          const providers = await options.createProviders(context)
+    const transport = stack.use(
+      new PipeTransport(socket, {
+        onRequest: async (method, params) => {
+          if (method === '_handshake') {
+            const context = params[0]
+            const providers = await options.createProviders(context)
 
-          registry = new Map<string, MethodHandler>()
-          for (const { providerKey, methods } of PROVIDER_METHODS) {
-            const provider = providers[providerKey as keyof ProviderSet] as
-              | Record<string, unknown>
-              | undefined
-            if (!provider) continue
-            for (const m of methods) {
-              const fn = provider[m]
-              if (typeof fn === 'function') {
-                registry.set(`${providerKey}.${m}`, (...args: unknown[]) =>
-                  (fn as (...a: unknown[]) => Promise<unknown>).apply(
-                    provider,
-                    args,
-                  ),
-                )
+            registry = new Map<string, MethodHandler>()
+            for (const { providerKey, methods } of PROVIDER_METHODS) {
+              const provider = providers[providerKey as keyof ProviderSet] as
+                | Record<string, unknown>
+                | undefined
+              if (!provider) continue
+              for (const m of methods) {
+                const fn = provider[m]
+                if (typeof fn === 'function') {
+                  registry.set(`${providerKey}.${m}`, (...args: unknown[]) =>
+                    (fn as (...a: unknown[]) => Promise<unknown>).apply(
+                      provider,
+                      args,
+                    ),
+                  )
+                }
               }
             }
+
+            return { methods: [...registry.keys()] }
           }
 
-          return { methods: [...registry.keys()] }
-        }
+          if (!registry) {
+            throw new Error('Handshake not completed')
+          }
+          const handler = registry.get(method)
+          if (!handler) {
+            throw new Error(`Unknown method: ${method}`)
+          }
+          return handler(...params)
+        },
+      }),
+    )
 
-        if (!registry) {
-          throw new Error('Handshake not completed')
-        }
-        const handler = registry.get(method)
-        if (!handler) {
-          throw new Error(`Unknown method: ${method}`)
-        }
-        return handler(...params)
-      },
-    })
     connections.add(transport)
     socket.on('close', () => connections.delete(transport))
   })
@@ -125,10 +129,8 @@ export async function servePipe(
     get connectionCount() {
       return connections.size
     },
-    async close() {
-      for (const transport of connections) {
-        transport[Symbol.dispose]()
-      }
+    async [Symbol.asyncDispose]() {
+      await stack.disposeAsync()
       connections.clear()
       await new Promise<void>((resolve, reject) => {
         server.close((err) => {
@@ -141,9 +143,6 @@ export async function servePipe(
           unlinkSync(pipePath)
         } catch {}
       }
-    },
-    async [Symbol.asyncDispose]() {
-      await this.close()
     },
   }
 
