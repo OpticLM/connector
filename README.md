@@ -1,5 +1,8 @@
 # @opticlm/connector
 
+> [!WARNING]
+> This library is intended solely for implementing Optic's Extension functionality and has not been designed with reliability in mind for other purposes.
+
 Provides an abstract interface that allows LLMs to connect to fact sources such as LSPs, code diagnostics, symbol definitions/references, links, and frontmatter; includes both an MCP implementation and a Vercel AI SDK implementation.
 
 ## Table of Contents
