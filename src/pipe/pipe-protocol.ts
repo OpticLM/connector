@@ -185,7 +185,7 @@ export type ProviderMethodEntry = {
 export const PROVIDER_METHODS: ProviderMethodEntry[] = [
   {
     providerKey: 'fileAccess',
-    methods: ['readFile', 'readDirectory'],
+    methods: ['readFile', 'readDirectory', 'isFile', 'isDirectory'],
   },
   {
     providerKey: 'edit',
