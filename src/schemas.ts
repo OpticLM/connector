@@ -34,18 +34,17 @@ export const FuzzyPositionSchema = z.object({
 
 export const ApplyEditSchema = z.object({
   uri,
-  start_hash: z
+  start_line: z
     .string()
     .describe(
-      'Start line reference from hashline output, format "<line>:<hash>" (e.g., "3:a1"). ' +
-        'Copy this exactly from the files:// resource output.',
+      'The complete content of the first line to replace, including the "line:hash" prefix.',
     ),
-  end_hash: z
+  end_line: z
     .string()
     .optional()
     .describe(
-      'End line reference for multi-line edits (e.g., "5:0e"). ' +
-        'The range is inclusive. Omit for single-line edits (defaults to start_hash).',
+      'The complete content of the last line to replace, including the "line:hash" prefix. ' +
+        'The range is inclusive. Omit for single-line edits (defaults to start_line).',
     ),
   replace_text: z
     .string()

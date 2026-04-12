@@ -182,12 +182,11 @@ export const applyEdit = (
   tool({
     description:
       'Apply a text edit to a file. WORKFLOW: First read the file via the request_file tool to get ' +
-      'hashline-formatted content (e.g., "3:a1|  return x"). Then reference lines by their "line:hash" ' +
-      'to specify the edit range. The hash verifies the file has not changed since your read — if it has, ' +
-      'the edit is rejected and you must re-read the file. ' +
-      'For single-line edits, only start_hash is needed. For multi-line edits, provide both start_hash and end_hash. ' +
-      'The edit replaces the entire line range (inclusive) with replace_text. ' +
-      'The edit must be approved by the user before being applied.',
+      'hashline-formatted content (e.g., "3:a1|  return x"). Then reference lines ' +
+      'to specify the edit range. The line:hash prefix verifies the file has not changed since your read ' +
+      '- if it has, the edit is rejected and you must re-read the file. ' +
+      'For single-line edits, only start_line is needed. For multi-line edits, provide both start_line and end_line. ' +
+      'The edit replaces the entire line range (inclusive) with replace_text. ',
     inputSchema: ApplyEditSchema,
     execute: async (params) => {
       try {

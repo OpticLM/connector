@@ -1,6 +1,6 @@
 import type z from 'zod'
 import { normalizeUri } from '../formatting.js'
-import { computeLineHash, parseHashlineRef } from '../hashline.js'
+import { parseHashlineRef, toHashLine } from '../hashline.js'
 import type { FileAccessProvider } from '../interfaces.js'
 import type { ApplyEditSchema } from '../schemas.js'
 
@@ -10,8 +10,8 @@ export const dryRunEdit = async (
 ) => {
   const uri = normalizeUri(params.uri)
 
-  const startRef = parseHashlineRef(params.start_hash)
-  const endRef = params.end_hash ? parseHashlineRef(params.end_hash) : startRef
+  const startRef = parseHashlineRef(params.start_line)
+  const endRef = params.end_line ? parseHashlineRef(params.end_line) : startRef
 
   const content = await readFile(uri)
   const allLines = content.split(/\r?\n/)
@@ -28,18 +28,21 @@ export const dryRunEdit = async (
   }
 
   const startLineText = allLines[startRef.line - 1] as string
-  const startActualHash = computeLineHash(startLineText)
-  if (startActualHash !== startRef.hash) {
+  const expectedStartLine = toHashLine({
+    num: startRef.line,
+    text: startLineText,
+  })
+  if (expectedStartLine !== params.start_line) {
     throw new Error(
-      `Hash mismatch at line ${startRef.line}: expected "${startRef.hash}", got "${startActualHash}". File has changed since last read.`,
+      `Hash mismatch at line ${startRef.line}. Expected: ${expectedStartLine}. Got ${params.start_line}. File has changed since last read.`,
     )
   }
 
   const endLineText = allLines[endRef.line - 1] as string
-  const endActualHash = computeLineHash(endLineText)
-  if (endActualHash !== endRef.hash) {
+  const expectedEndLine = toHashLine({ num: endRef.line, text: endLineText })
+  if (expectedEndLine !== (params.end_line ?? params.start_line)) {
     throw new Error(
-      `Hash mismatch at line ${endRef.line}: expected "${endRef.hash}", got "${endActualHash}". File has changed since last read.`,
+      `Hash mismatch at line ${endRef.line}. Expected: ${expectedEndLine}. Got ${params.end_line}. File has changed since last read.`,
     )
   }
 

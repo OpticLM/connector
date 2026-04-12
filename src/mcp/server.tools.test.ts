@@ -305,7 +305,7 @@ describe('tool registration', () => {
       name: 'apply_edit',
       arguments: {
         uri: 'test.ts',
-        start_hash: '1:4e',
+        start_line: '1:4e|const foo = 1; const bar = 2;',
         replace_text: updated,
         description: 'Update foo value',
       },
@@ -328,7 +328,7 @@ describe('tool registration', () => {
       name: 'apply_edit',
       arguments: {
         uri: 'test.ts',
-        start_hash: '2:fa',
+        start_line: '2:fa|line2',
         replace_text: 'REPLACED',
         description: 'Replace line 2',
       },
@@ -356,7 +356,7 @@ describe('tool registration', () => {
       name: 'apply_edit',
       arguments: {
         uri: 'test.ts',
-        start_hash: '1:4e',
+        start_line: '1:4e|const foo = 1; const bar = 2;',
         replace_text: 'const foo = 100; const bar = 2;',
         description: 'Update foo value',
       },
@@ -420,7 +420,7 @@ describe('tool registration', () => {
       name: 'apply_edit',
       arguments: {
         uri: 'test.ts',
-        start_hash: '1:00',
+        start_line: '1:00|a',
         replace_text: 'replacement',
         description: 'Test edit',
       },

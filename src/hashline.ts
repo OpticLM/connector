@@ -49,25 +49,32 @@ export function toNumberedLines(content: string): NumberedLine[] {
 }
 
 /**
+ * Formats single line as hashline output.
+ *
+ * Output format: `<1-based-line>:<2-char-hash>|<content>`
+ */
+export function toHashLine(line: NumberedLine): string {
+  return `${line.num}:${computeLineHash(line.text)}|${line.text}`
+}
+
+/**
  * Formats numbered lines as hashline output.
  *
  * Output format: `<1-based-line>:<2-char-hash>|<content>`
  */
 export function formatAsHashlines(lines: NumberedLine[]): string {
-  return lines
-    .map((l) => `${l.num}:${computeLineHash(l.text)}|${l.text}`)
-    .join('\n')
+  return lines.map((l) => toHashLine(l)).join('\n')
 }
 
 /**
- * Parses a hashline reference like `"3:a1"` into line number and hash.
+ * Parses a hashline like `3:a1|contents` into line number and hash.
  * @throws Error if the format is invalid
  */
 export function parseHashlineRef(ref: string): { line: number; hash: string } {
-  const match = ref.match(/^(\d+):([0-9a-f]{2})$/)
+  const match = ref.match(/^(\d+):([0-9a-f]{2})(?:\||$)/)
   if (!match || !match[1] || !match[2]) {
     throw new Error(
-      `Invalid hashline reference "${ref}". Expected format: "<line>:<hash>" (e.g., "3:a1")`,
+      `Invalid hashline reference "${ref}". Expected format starting with: "<line>:<hash>" (e.g., "3:a1")`,
     )
   }
   return { line: parseInt(match[1], 10), hash: match[2] }

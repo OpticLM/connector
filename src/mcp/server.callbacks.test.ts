@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { FrontmatterMatch, Link } from '../types.js'
-import { install } from '.'
+import { install } from './index.js'
 import {
   createAndConnectMockClient,
   createMockDefinitionProvider,
@@ -27,7 +27,7 @@ describe('tool callbacks', () => {
     const files = { 'test.ts': 'const foo = 1; const bar = 2;' }
     const validArgs = {
       uri: 'test.ts',
-      start_hash: '1:4e',
+      start_line: '1:4e|const foo = 1; const bar = 2;',
       replace_text: 'new content',
       description: 'test edit',
     }
@@ -105,7 +105,7 @@ describe('tool callbacks', () => {
 
       const r = await (await createAndConnectMockClient(server)).callTool({
         name: 'apply_edit',
-        arguments: { ...validArgs, start_hash: '1:00' }, // wrong hash
+        arguments: { ...validArgs, start_line: '1:00|abc' }, // wrong hash
       })
 
       expect(r.isError).toBe(true)

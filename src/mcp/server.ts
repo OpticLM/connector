@@ -10,6 +10,7 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { dryRunEdit } from '../ai-sdk/utils.js'
 import type {
   DefinitionProvider,
   DiagnosticsProvider,
@@ -29,12 +30,7 @@ import {
   makeToolResult,
   normalizeUri,
 } from '../formatting.js'
-import {
-  computeLineHash,
-  formatAsHashlines,
-  parseHashlineRef,
-  toNumberedLines,
-} from '../hashline.js'
+import { formatAsHashlines, toNumberedLines } from '../hashline.js'
 import type { EditProvider, FileAccessProvider } from '../interfaces.js'
 import { SymbolResolutionError, type SymbolResolver } from '../resolver.js'
 import {
@@ -627,77 +623,22 @@ export function registerApplyEditTool(
     {
       description:
         'Apply a text edit to a file. WORKFLOW: First read the file via the files:// resource to get ' +
-        'hashline-formatted content (e.g., "3:a1|  return x"). Then reference lines by their "line:hash" ' +
+        'hashline-formatted content (e.g., "3:a1|  return x"). Then reference lines ' +
         'to specify the edit range. The hash verifies the file has not changed since your read — if it has, ' +
         'the edit is rejected and you must re-read the file. ' +
-        'For single-line edits, only start_hash is needed. For multi-line edits, provide both start_hash and end_hash. ' +
-        'The edit replaces the entire line range (inclusive) with replace_text. ' +
-        'The edit must be approved by the user before being applied.',
-      inputSchema: {
-        uri: ApplyEditSchema.shape.uri,
-        start_hash: ApplyEditSchema.shape.start_hash,
-        end_hash: ApplyEditSchema.shape.end_hash,
-        replace_text: ApplyEditSchema.shape.replace_text,
-        description: ApplyEditSchema.shape.description,
-      },
+        'For single-line edits, only start_line is needed. For multi-line edits, provide both start_line and end_line. ' +
+        'The edit replaces the entire line range (inclusive) with replace_text. ',
+      inputSchema: ApplyEditSchema,
     },
     async (params) => {
       callbacks?.onInput?.(params)
       try {
-        const uri = normalizeUri(params.uri)
-
-        // Parse hashline references
-        const startRef = parseHashlineRef(params.start_hash)
-        const endRef = params.end_hash
-          ? parseHashlineRef(params.end_hash)
-          : startRef
-
-        // Read file and verify hashes
-        const content = await readFile(uri)
-        const allLines = content.split(/\r?\n/)
-
-        // Validate line numbers are in range (1-based)
-        if (startRef.line < 1 || startRef.line > allLines.length) {
-          throw new Error(
-            `Start line ${startRef.line} is out of range (file has ${allLines.length} lines)`,
-          )
-        }
-        if (endRef.line < startRef.line || endRef.line > allLines.length) {
-          throw new Error(
-            `End line ${endRef.line} is out of range (file has ${allLines.length} lines)`,
-          )
-        }
-
-        // Verify hashes match current content
-        const startLineText = allLines[startRef.line - 1] as string
-        const startActualHash = computeLineHash(startLineText)
-        if (startActualHash !== startRef.hash) {
-          throw new Error(
-            `Hash mismatch at line ${startRef.line}: expected "${startRef.hash}", got "${startActualHash}". File has changed since last read.`,
-          )
-        }
-
-        const endLineText = allLines[endRef.line - 1] as string
-        const endActualHash = computeLineHash(endLineText)
-        if (endActualHash !== endRef.hash) {
-          throw new Error(
-            `Hash mismatch at line ${endRef.line}: expected "${endRef.hash}", got "${endActualHash}". File has changed since last read.`,
-          )
-        }
-
-        // Compute updated file content by applying the edit
-        const linesBefore = allLines.slice(0, startRef.line - 1)
-        const linesAfter = allLines.slice(endRef.line)
-        const updated = [
-          ...linesBefore,
-          params.replace_text,
-          ...linesAfter,
-        ].join('\n')
+        const { updated } = await dryRunEdit(params, readFile)
 
         // Create pending edit operation
         const operation: PendingEditOperation = {
           id: generateEditId(),
-          uri,
+          uri: params.uri,
           updated,
           description: params.description,
         }
