@@ -72,7 +72,7 @@ export function formatAsHashlines(lines: NumberedLine[]): string {
  */
 export function parseHashlineRef(ref: string): { line: number; hash: string } {
   const match = ref.match(/^(\d+):([0-9a-f]{2})(?:\||$)/)
-  if (!match || !match[1] || !match[2]) {
+  if (!match?.[1] || !match[2]) {
     throw new Error(
       `Invalid hashline reference "${ref}". Expected format starting with: "<line>:<hash>" (e.g., "3:a1")`,
     )

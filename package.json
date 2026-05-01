@@ -1,6 +1,6 @@
 {
   "name": "@opticlm/connector",
-  "version": "2.10.0",
+  "version": "2.10.1",
   "description": "Provides an abstract interface that allows LLMs to connect to fact sources such as LSPs, code diagnostics, symbol definitions/references, links, and frontmatter",
   "type": "module",
   "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
   },
   "files": ["dist/**/*.js", "dist/**/*.d.ts", "LICENSE"],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -49,10 +49,10 @@
     "url": "https://github.com/OpticLM/connector"
   },
   "peerDependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "ai": "^6.0.146",
     "vscode-languageserver-protocol": "^3.17.5",
-    "zod": "^4.3.6"
+    "zod": "^4.0"
   },
   "peerDependenciesMeta": {
     "vscode-languageserver-protocol": {
@@ -66,11 +66,11 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.6",
+    "@biomejs/biome": "2.4.13",
     "@types/node": "^25",
     "nanoid": "^5.1.7",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9",
+    "tsdown": "^0.21.10",
+    "typescript": "^6",
     "vitest": "^4"
   },
   "engines": {
