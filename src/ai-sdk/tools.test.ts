@@ -1,5 +1,3 @@
-// biome-ignore-all lint/style/noNonNullAssertion: .
-
 import { describe, expect, it, vi } from 'vitest'
 import {
   createMockDefinitionProvider,
@@ -37,11 +35,7 @@ import {
   setFrontmatter,
 } from './tools.js'
 
-async function exec(
-  // biome-ignore lint/suspicious/noExplicitAny: call a tool's execute function directly, bypassing AI SDK internals.
-  t: { execute?: (...args: any[]) => any },
-  params: unknown,
-) {
+async function exec(t: { execute?: (...args: any[]) => any }, params: unknown) {
   return t.execute!(params, {})
 }
 

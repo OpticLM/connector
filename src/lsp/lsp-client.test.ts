@@ -1,5 +1,3 @@
-// biome-ignore-all lint/style/noNonNullAssertion: acceptable in test
-
 import { PassThrough } from 'node:stream'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
@@ -188,8 +186,8 @@ describe('LspClient', () => {
       })
 
       expect(result).toHaveLength(1)
-      expect(result![0].uri).toBe('src/target.ts')
-      expect(result![0].content).toBe('export function hello() {}')
+      expect(result![0]!.uri).toBe('src/target.ts')
+      expect(result![0]!.content).toBe('export function hello() {}')
     })
 
     it('handles null result', async () => {
@@ -238,8 +236,8 @@ describe('LspClient', () => {
       )
 
       expect(result).toHaveLength(1)
-      expect(result![0].uri).toBe('src/target.ts')
-      expect(result![0].content).toBe('export interface MyType {}')
+      expect(result![0]!.uri).toBe('src/target.ts')
+      expect(result![0]!.content).toBe('export interface MyType {}')
     })
 
     it('handles null result', async () => {
@@ -349,7 +347,7 @@ describe('LspClient', () => {
         'incoming',
       )
       expect(result).toHaveLength(1)
-      expect(result![0].uri).toBe('src/caller.ts')
+      expect(result![0]!.uri).toBe('src/caller.ts')
     })
 
     it('returns empty when prepareCallHierarchy returns null', async () => {
@@ -405,10 +403,10 @@ describe('LspClient', () => {
 
       const result = await client.outline?.provideDocumentSymbols('src/main.ts')
       expect(result).toHaveLength(1)
-      expect(result![0].name).toBe('MyClass')
-      expect(result![0].kind).toBe('class')
-      expect(result![0].children).toHaveLength(1)
-      expect(result![0].children?.[0].kind).toBe('method')
+      expect(result![0]!.name).toBe('MyClass')
+      expect(result![0]!.kind).toBe('class')
+      expect(result![0]!.children).toHaveLength(1)
+      expect(result![0]!.children?.[0]?.kind).toBe('method')
     })
 
     it('converts SymbolInformation results', async () => {
@@ -433,8 +431,8 @@ describe('LspClient', () => {
 
       const result = await client.outline?.provideDocumentSymbols('src/main.ts')
       expect(result).toHaveLength(1)
-      expect(result![0].name).toBe('globalVar')
-      expect(result![0].kind).toBe('variable')
+      expect(result![0]!.name).toBe('globalVar')
+      expect(result![0]!.kind).toBe('variable')
     })
 
     it('handles null result', async () => {
@@ -478,8 +476,8 @@ describe('LspClient', () => {
 
       const result = await client.diagnostics?.provideDiagnostics('src/main.ts')
       expect(result).toHaveLength(1)
-      expect(result![0].severity).toBe('error')
-      expect(result![0].message).toBe('Syntax error')
+      expect(result![0]!.severity).toBe('error')
+      expect(result![0]!.message).toBe('Syntax error')
     })
 
     it('returns all cached diagnostics for workspace', async () => {

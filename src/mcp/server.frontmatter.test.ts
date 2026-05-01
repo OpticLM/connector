@@ -392,9 +392,9 @@ describe('frontmatter capability', () => {
 
       expect(r.contents).toHaveLength(1)
       const content = r.contents[0]
-      expect(content.mimeType).toBe('application/json')
+      expect(content?.mimeType).toBe('application/json')
       expect(content).toHaveProperty('text')
-      if (!('text' in content)) {
+      if (!('text' in content!)) {
         throw new Error('Unexpected')
       }
 
@@ -421,7 +421,7 @@ describe('frontmatter capability', () => {
       })
 
       expect(r.contents).toHaveLength(1)
-      if (!('text' in r.contents[0])) {
+      if (!('text' in r.contents[0]!)) {
         throw new Error('Unexpected')
       }
 
@@ -466,7 +466,7 @@ describe('frontmatter capability', () => {
       })
 
       expect(r.contents).toHaveLength(1)
-      if (!('text' in r.contents[0])) {
+      if (!('text' in r.contents[0]!)) {
         throw new Error('Unexpected')
       }
 

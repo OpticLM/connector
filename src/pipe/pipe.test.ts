@@ -143,6 +143,8 @@ describe('Pipe IPC - Context', () => {
           fileAccess: {
             readFile: async (uri: string) => `${prefix}:${uri}`,
             readDirectory: async () => [],
+            isFile: async () => true,
+            isDirectory: async () => true,
           },
         }
       },
@@ -418,6 +420,8 @@ describe('Pipe IPC - Cleanup', () => {
           readFile: () =>
             new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
           readDirectory: vi.fn(async () => []),
+          isFile: async () => true,
+          isDirectory: async () => true,
         },
       }),
     })
@@ -440,6 +444,8 @@ describe('Pipe IPC - Cleanup', () => {
           readFile: () =>
             new Promise((resolve) => setTimeout(() => resolve('late'), 5000)),
           readDirectory: vi.fn(async () => []),
+          isFile: async () => true,
+          isDirectory: async () => true,
         },
       }),
     })

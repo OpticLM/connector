@@ -184,7 +184,7 @@ describe('graph capability', () => {
     })
 
     expect(r.contents).toHaveLength(1)
-    const content = r.contents[0]
+    const content = r.contents[0]!
     expect(content.mimeType).toBe('application/json')
     expect(content).toHaveProperty('text')
     if (!('text' in content)) {
@@ -223,7 +223,7 @@ describe('graph capability', () => {
 
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]?.mimeType).toBe('application/json')
-    if (!('text' in r.contents[0])) {
+    if (!('text' in r.contents[0]!)) {
       throw new Error('Unexpected')
     }
 
@@ -247,7 +247,7 @@ describe('graph capability', () => {
 
     expect(r.contents).toHaveLength(1)
     expect(r.contents[0]).toHaveProperty('text')
-    if (!('text' in r.contents[0])) {
+    if (!('text' in r.contents[0]!)) {
       throw new Error('Unexpected')
     }
     const links = JSON.parse(r.contents[0]?.text ?? '[]')
@@ -267,7 +267,7 @@ describe('graph capability', () => {
     })
 
     expect(r.contents).toHaveLength(1)
-    if (!('text' in r.contents[0])) {
+    if (!('text' in r.contents[0]!)) {
       throw new Error('Unexpected')
     }
     const links = JSON.parse(r.contents[0]?.text ?? '[]')
@@ -351,7 +351,7 @@ describe('graph capability', () => {
     })
 
     expect(r.contents).toHaveLength(1)
-    if (!('text' in r.contents[0])) {
+    if (!('text' in r.contents[0]!)) {
       throw new Error('Unexpected')
     }
     const content = JSON.parse(r.contents[0]?.text ?? '{}')
@@ -378,7 +378,7 @@ describe('graph capability', () => {
     })
 
     expect(r.contents).toHaveLength(1)
-    if (!('text' in r.contents[0])) {
+    if (!('text' in r.contents[0]!)) {
       throw new Error('Unexpected')
     }
     const content = JSON.parse(r.contents[0]?.text ?? '{}')

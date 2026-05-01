@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsup'
+import { defineConfig } from 'tsdown'
 
 export default defineConfig({
   entry: [
@@ -13,7 +13,7 @@ export default defineConfig({
   minify: true,
   dts: true,
   treeshake: true,
-  splitting: false,
+  sourcemap: false,
   clean: true,
   outDir: 'dist',
   target: 'es2022',

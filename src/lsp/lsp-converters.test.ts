@@ -205,7 +205,7 @@ describe('convertLspDocumentSymbol', () => {
 
     expect(result.kind).toBe('class')
     expect(result.children).toHaveLength(1)
-    expect(result.children?.[0].kind).toBe('method')
+    expect(result.children?.[0]?.kind).toBe('method')
   })
 })
 
@@ -274,8 +274,8 @@ describe('convertLocationsToSnippets', () => {
     )
 
     expect(result).toHaveLength(1)
-    expect(result[0].uri).toBe('src/main.ts')
-    expect(result[0].content).toBe('line 1\nline 2')
+    expect(result[0]?.uri).toBe('src/main.ts')
+    expect(result[0]?.content).toBe('line 1\nline 2')
   })
 
   it('converts Location array', async () => {
@@ -302,8 +302,8 @@ describe('convertLocationsToSnippets', () => {
     )
 
     expect(result).toHaveLength(2)
-    expect(result[0].content).toBe('line 0')
-    expect(result[1].content).toBe('line 3\nline 4')
+    expect(result[0]?.content).toBe('line 0')
+    expect(result[1]?.content).toBe('line 3\nline 4')
   })
 
   it('converts LocationLink array', async () => {
@@ -327,7 +327,7 @@ describe('convertLocationsToSnippets', () => {
     )
 
     expect(result).toHaveLength(1)
-    expect(result[0].content).toBe('line 1')
+    expect(result[0]?.content).toBe('line 1')
   })
 
   it('handles read errors gracefully', async () => {
@@ -345,7 +345,7 @@ describe('convertLocationsToSnippets', () => {
     )
 
     expect(result).toHaveLength(1)
-    expect(result[0].content).toBe('')
+    expect(result[0]?.content).toBe('')
   })
 })
 

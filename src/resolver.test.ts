@@ -14,6 +14,9 @@ function createMockFileAccess(
       }
       return content
     }),
+    readDirectory: async () => [],
+    isFile: async () => true,
+    isDirectory: async () => true,
   }
 }
 

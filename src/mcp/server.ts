@@ -62,7 +62,7 @@ function parseLineRange(
 
   // Match #Lxx or #Lxx-Lyy
   const match = fragment.match(/^L(\d+)(?:-L(\d+))?$/)
-  if (!match || !match[1]) return null
+  if (!match?.[1]) return null
 
   const start = parseInt(match[1], 10)
   const end = match[2] ? parseInt(match[2], 10) : start
